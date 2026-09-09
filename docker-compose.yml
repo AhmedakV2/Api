@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: aft
+      POSTGRES_USER: aft
+      POSTGRES_PASSWORD: aft
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aft"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+
+  aft-api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AFT_DB_URL: jdbc:postgresql://postgres:5432/aft
+      AFT_DB_USER: aft
+      AFT_DB_PASSWORD: aft
+      AFT_REDIS_HOST: redis
+      AFT_CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

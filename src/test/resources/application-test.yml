@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: localhost
+
+aft:
+  cors:
+    allowed-origins: http://localhost
+  jwt:
+    secret:
