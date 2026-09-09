@@ -1,0 +1,14 @@
+spring:
+  jpa:
+    show-sql: false
+  flyway:
+    validate-on-migrate: true
+    clean-disabled: true
+
+server:
+  forward-headers-strategy: framework
+
+logging:
+  level:
+    root: WARN
+    com.aft.api: INFO
