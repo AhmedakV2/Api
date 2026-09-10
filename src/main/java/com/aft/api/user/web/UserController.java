@@ -1,6 +1,5 @@
 package com.aft.api.user.web;
 
-
 import com.aft.api.common.dto.PageResponse;
 import com.aft.api.user.dto.AssignRoleRequest;
 import com.aft.api.user.dto.ChangePasswordRequest;
@@ -31,7 +30,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-
 @RestController
 @RequestMapping("/api/v1/users")
 @Tag(name = "Kullanici", description = "Kullanici ve rol yonetimi")
@@ -61,14 +59,14 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.name")
+    @PreAuthorize("hasRole('ADMIN') or @aft.isSelf(#id, authentication)")
     @Operation(summary = "Kullanici detay")
     public UserDto get(@PathVariable UUID id) {
         return userService.get(id);
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.name")
+    @PreAuthorize("hasRole('ADMIN') or @aft.isSelf(#id, authentication)")
     @Operation(summary = "Kullanici guncelle")
     public UserDto update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request) {
         return userService.update(id, request);
@@ -97,7 +95,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/password")
-    @PreAuthorize("#id == authentication.name")
+    @PreAuthorize("@aft.isSelf(#id, authentication)")
     @Operation(summary = "Parola degistir")
     public ResponseEntity<Void> changePassword(@PathVariable UUID id, @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(id, request.currentPassword(), request.newPassword());
