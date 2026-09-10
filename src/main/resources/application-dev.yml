@@ -12,4 +12,4 @@ logging:
 
 aft:
   jwt:
-    secret: ${AFT_JWT_SECRET:gelistirme-ortami-icin-en-az-otuz-iki-karakterlik-anahtar}
+    secret: ${AFT_JWT_SECRET:}

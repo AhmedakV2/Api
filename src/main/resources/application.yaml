@@ -27,7 +27,7 @@ spring:
     clean-disabled: true
   data:
     redis:
-      host: ${AFT_REDIS_HOST:localhost}
+      host: ${AFT_REDIS_HOST:}
       port: 6379
       password: ${AFT_REDIS_PASSWORD:}
   threads:
