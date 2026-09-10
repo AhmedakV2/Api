@@ -72,7 +72,7 @@ class PasswordPolicyTest {
 
         assertThatThrownBy(() -> policy.validateChange(userId, raw, "ahmet@aft.local"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("tekrari");
+                .hasMessageContaining("tekrar");
     }
 
     @Test

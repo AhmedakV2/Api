@@ -9,3 +9,7 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.springframework.security: DEBUG
+
+aft:
+  jwt:
+    secret: ${AFT_JWT_SECRET:gelistirme-ortami-icin-en-az-otuz-iki-karakterlik-anahtar}

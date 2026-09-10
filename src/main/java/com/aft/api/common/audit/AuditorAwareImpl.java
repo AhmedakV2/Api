@@ -1,12 +1,13 @@
 package com.aft.api.common.audit;
 
+import com.aft.api.security.AftPrincipal;
+import com.aft.api.security.ApiKeyPrincipal;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
 
 @Component("auditorAware")
 public class AuditorAwareImpl implements AuditorAware<UUID> {
@@ -16,10 +17,10 @@ public class AuditorAwareImpl implements AuditorAware<UUID> {
         if (auth == null || !auth.isAuthenticated()) {
             return Optional.empty();
         }
-       try {
-            return Optional.of(UUID.fromString(auth.getName()));
-        } catch (IllegalArgumentException ignored) {
-            return Optional.empty();
-        }
+        return switch (auth.getPrincipal()) {
+            case AftPrincipal principal -> Optional.of(principal.userId());
+            case ApiKeyPrincipal principal -> Optional.of(principal.ownerId());
+            default -> Optional.empty();
+        };
     }
 }
