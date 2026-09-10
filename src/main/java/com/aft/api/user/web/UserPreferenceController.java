@@ -27,17 +27,16 @@ public class UserPreferenceController {
     }
 
     @GetMapping
-    @PreAuthorize("#id == authentication.principal.name")
+    @PreAuthorize("@aft.isSelf(#id, authentication)")
     @Operation(summary = "Kullanıcı tercihlerini getirir")
     public List<PreferenceDto> getPreferences(@PathVariable UUID id) {
         return preferenceService.findAll(id);
     }
 
     @PutMapping
-    @PreAuthorize("#id == authentication.principal.name")
+    @PreAuthorize("@aft.isSelf(#id, authentication)")
     @Operation(summary = "Kullanıcı tercihlerini yazma")
     public List<PreferenceDto> replace(@PathVariable UUID id, @Valid @RequestBody PreferenceBulkRequest request) {
         return preferenceService.replaceAll(id, request.preferences());
     }
-
 }

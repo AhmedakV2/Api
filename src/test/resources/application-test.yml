@@ -12,4 +12,4 @@ aft:
   cors:
     allowed-origins: http://localhost
   jwt:
-    secret:
+    secret: test-anahtari-en-az-otuz-iki-karakter-uzunlugunda

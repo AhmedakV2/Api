@@ -54,6 +54,16 @@ aft:
     secret: ${AFT_JWT_SECRET:}
     access-ttl: ${AFT_JWT_ACCESS_TTL:PT15M}
     refresh-ttl: ${AFT_JWT_REFRESH_TTL:P30D}
+    issuer: aft-api
+  security:
+    lockout:
+      max-attempts: ${AFT_LOGIN_MAX_ATTEMPTS:5}
+      duration: ${AFT_LOGIN_LOCK_DURATION:PT15M}
+    rate-limit:
+      anonymous-per-minute: ${AFT_RATE_ANON:20}
+      authenticated-per-minute: ${AFT_RATE_AUTH:300}
+      agent-per-minute: ${AFT_RATE_AGENT:30}
+    ws-ticket-ttl: PT60S
 
 management:
   endpoints:
