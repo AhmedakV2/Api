@@ -26,7 +26,6 @@ import reactor.core.Disposable;
 
 @Service
 public class AgentBrainService {
-
     private static final Logger log = LoggerFactory.getLogger(AgentBrainService.class);
 
     private final AgentSessionManager sessionManager;
@@ -115,7 +114,8 @@ public class AgentBrainService {
 
     private List<Message> buildPrompt(AgentSession session) {
         String system = promptLibrary.system(SystemPrompts.PLANNER, session.getMode());
-        return conversationWindow.build(system, sessionManager.history(session.getId()));
+        return conversationWindow.build(system,
+                sessionManager.recentHistory(session.getId(), properties.maxWindowMessages()));
     }
 
     private ChatResponse callModel(AgentSession session, List<Message> prompt) {

@@ -14,7 +14,6 @@ import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
 public class StubModelProvider implements ModelProvider {
-
     private final List<String> chunks;
     private final RuntimeException failure;
     private Prompt lastPrompt;
@@ -72,7 +71,6 @@ public class StubModelProvider implements ModelProvider {
     }
 
     private final class StubChatModel implements ChatModel {
-
         @Override
         public ChatResponse call(Prompt prompt) {
             return StubModelProvider.this.call(prompt.getInstructions(), null);

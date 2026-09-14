@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AgentSessionRepository extends JpaRepository<AgentSession, UUID> {
-
     @Query("""
             SELECT s FROM AgentSession s
             WHERE s.userId = :userId AND s.orgId = :orgId

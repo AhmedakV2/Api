@@ -8,9 +8,7 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import reactor.core.publisher.Flux;
 
-
 public interface ModelProvider {
-
     ProviderName name();
 
     ChatModel chatModel();

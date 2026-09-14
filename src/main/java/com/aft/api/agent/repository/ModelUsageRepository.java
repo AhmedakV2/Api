@@ -10,13 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ModelUsageRepository extends JpaRepository<ModelUsage, UUID> {
-
-    @Query("""
-            SELECT COALESCE(SUM(u.tokenIn + u.tokenOut), 0) FROM ModelUsage u
-            WHERE u.orgId = :orgId AND u.recordedAt >= :since
-            """)
-    long sumTokensSince(@Param("orgId") UUID orgId, @Param("since") Instant since);
-
     @Query("""
             SELECT new com.aft.api.agent.repository.ModelUsageRepository$ModelTotal(
                 u.model, SUM(u.tokenIn), SUM(u.tokenOut), SUM(u.cost), COUNT(u))

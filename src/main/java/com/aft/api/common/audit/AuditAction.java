@@ -24,5 +24,4 @@ public enum AuditAction {
     MEMBER_REMOVED,
     AGENT_SESSION_OPENED,
     AGENT_SESSION_DELETED
-
 }

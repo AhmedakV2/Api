@@ -38,7 +38,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AgentBrainServiceTest {
-
     private static final UUID SESSION_ID = UUID.randomUUID();
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID ORG_ID = UUID.randomUUID();
@@ -65,7 +64,7 @@ class AgentBrainServiceTest {
                 new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(), properties);
 
         when(sessionManager.requireOpen(SESSION_ID, USER_ID)).thenReturn(session);
-        when(sessionManager.history(any())).thenReturn(List.of());
+        when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
         when(sessionManager.append(any(), any(), any(), anyInt()))
                 .thenAnswer(call -> new AgentMessage(SESSION_ID, 1, call.getArgument(1),
                         call.getArgument(2), call.getArgument(3)));

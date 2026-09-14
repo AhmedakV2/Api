@@ -13,7 +13,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "agent_message")
 public class AgentMessage {
-
     @Id
     @GeneratedValue
     @Column(name = "id", nullable = false, updatable = false)

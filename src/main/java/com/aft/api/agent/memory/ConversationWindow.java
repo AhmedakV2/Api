@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ConversationWindow {
-
     private final AiProperties properties;
 
     public ConversationWindow(AiProperties properties) {
@@ -62,4 +61,3 @@ public class ConversationWindow {
         return null;
     }
 }
-

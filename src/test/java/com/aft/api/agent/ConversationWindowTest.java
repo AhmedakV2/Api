@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.MessageType;
 
 class ConversationWindowTest {
-
     private static final UUID SESSION = UUID.randomUUID();
 
     private ConversationWindow window(int maxMessages, int maxTokens) {

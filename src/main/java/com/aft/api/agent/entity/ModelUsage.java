@@ -12,7 +12,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "model_usage")
 public class ModelUsage {
-
     @Id
     @GeneratedValue
     @Column(name = "id", nullable = false, updatable = false)

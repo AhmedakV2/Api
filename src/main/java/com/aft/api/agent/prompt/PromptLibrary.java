@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PromptLibrary {
-
     private final Map<SystemPrompts, String> templates = new EnumMap<>(SystemPrompts.class);
 
     public PromptLibrary() {
@@ -31,5 +30,4 @@ public class PromptLibrary {
             throw new UncheckedIOException("Istem sablonu okunamadi: " + location, e);
         }
     }
-
 }

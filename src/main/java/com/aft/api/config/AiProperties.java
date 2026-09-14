@@ -9,7 +9,6 @@ public record AiProperties(String provider,
                            Duration requestTimeout,
                            int maxWindowMessages,
                            int maxWindowTokens) {
-
     public AiProperties {
         provider = (provider == null || provider.isBlank()) ? "ollama" : provider.toLowerCase();
         models = models == null ? new Models(null, null, null) : models;
@@ -19,7 +18,6 @@ public record AiProperties(String provider,
     }
 
     public record Models(String planner, String fast, String embedding) {
-
         public Models {
             planner = (planner == null || planner.isBlank()) ? "llama3.1:8b" : planner;
             fast = (fast == null || fast.isBlank()) ? planner : fast;
