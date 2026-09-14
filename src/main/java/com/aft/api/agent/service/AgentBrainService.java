@@ -1,0 +1,173 @@
+package com.aft.api.agent.service;
+
+import com.aft.api.agent.dto.AgentResponse;
+import com.aft.api.agent.entity.AgentMessage;
+import com.aft.api.agent.entity.AgentSession;
+import com.aft.api.agent.entity.MessageRole;
+import com.aft.api.agent.memory.ConversationWindow;
+import com.aft.api.agent.prompt.PromptLibrary;
+import com.aft.api.agent.prompt.SystemPrompts;
+import com.aft.api.agent.provider.ModelProvider;
+import com.aft.api.agent.provider.ModelRouter;
+import com.aft.api.common.exception.ApiException;
+import com.aft.api.common.exception.ErrorCode;
+import com.aft.api.config.AiProperties;
+import com.aft.api.realtime.SseEmitterRegistry;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.stereotype.Service;
+import reactor.core.Disposable;
+
+@Service
+public class AgentBrainService {
+    private static final Logger log = LoggerFactory.getLogger(AgentBrainService.class);
+
+    private final AgentSessionManager sessionManager;
+    private final ConversationWindow conversationWindow;
+    private final PromptLibrary promptLibrary;
+    private final ModelRouter modelRouter;
+    private final ModelUsageService usageService;
+    private final SseEmitterRegistry emitters;
+    private final AiProperties properties;
+
+    public AgentBrainService(AgentSessionManager sessionManager,
+                             ConversationWindow conversationWindow,
+                             PromptLibrary promptLibrary,
+                             ModelRouter modelRouter,
+                             ModelUsageService usageService,
+                             SseEmitterRegistry emitters,
+                             AiProperties properties) {
+        this.sessionManager = sessionManager;
+        this.conversationWindow = conversationWindow;
+        this.promptLibrary = promptLibrary;
+        this.modelRouter = modelRouter;
+        this.usageService = usageService;
+        this.emitters = emitters;
+        this.properties = properties;
+    }
+
+    public AgentResponse respond(UUID sessionId, UUID userId, String content) {
+        AgentSession session = sessionManager.requireOpen(sessionId, userId);
+        sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
+
+        List<Message> prompt = buildPrompt(session);
+        ChatResponse response = callModel(session, prompt);
+        String text = textOf(response);
+
+        AgentMessage saved = sessionManager.append(sessionId, MessageRole.ASSISTANT, text,
+                ConversationWindow.estimate(text));
+        int tokenIn = tokenIn(response);
+        int tokenOut = tokenOut(response);
+        usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(), tokenIn, tokenOut);
+
+        return new AgentResponse(sessionId, saved.getId(), saved.getSeq(), text,
+                session.getModel(), tokenIn, tokenOut);
+    }
+
+    public void streamInto(UUID sessionId, UUID userId, String content) {
+        AgentSession session = sessionManager.requireOpen(sessionId, userId);
+        if (!emitters.isOpen(sessionId)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "Bu oturum icin acik bir akis kanali yok");
+        }
+        sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
+
+        List<Message> prompt = buildPrompt(session);
+        ModelProvider provider = modelRouter.provider();
+        StringBuilder buffer = new StringBuilder();
+        AtomicInteger tokenIn = new AtomicInteger();
+        AtomicInteger tokenOut = new AtomicInteger();
+
+        Disposable subscription = provider.stream(prompt, session.getModel())
+                .doOnNext(chunk -> {
+                    String piece = textOf(chunk);
+                    if (!piece.isEmpty()) {
+                        buffer.append(piece);
+                        emitters.send(sessionId, "delta", piece);
+                    }
+                    captureUsage(chunk, tokenIn, tokenOut);
+                })
+                .doOnError(error -> {
+                    log.error("Model akisi basarisiz sessionId={}", sessionId, error);
+                    sessionManager.markFailed(sessionId);
+                    emitters.completeWithError(sessionId,
+                            new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Model saglayici yanit vermedi"));
+                })
+                .doOnComplete(() -> {
+                    String text = buffer.toString();
+                    AgentMessage saved = sessionManager.append(sessionId, MessageRole.ASSISTANT, text,
+                            ConversationWindow.estimate(text));
+                    usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(),
+                            tokenIn.get(), tokenOut.get());
+                    emitters.send(sessionId, "done", saved.getId().toString());
+                    emitters.complete(sessionId);
+                })
+                .subscribe();
+
+        emitters.attach(sessionId, subscription);
+    }
+
+    private List<Message> buildPrompt(AgentSession session) {
+        String system = promptLibrary.system(SystemPrompts.PLANNER, session.getMode());
+        return conversationWindow.build(system,
+                sessionManager.recentHistory(session.getId(), properties.maxWindowMessages()));
+    }
+
+    private ChatResponse callModel(AgentSession session, List<Message> prompt) {
+        try {
+            return modelRouter.provider().call(prompt, session.getModel());
+        } catch (RuntimeException e) {
+            log.error("Model cagrisi basarisiz sessionId={}", session.getId(), e);
+            sessionManager.markFailed(session.getId());
+            throw new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Model saglayici yanit vermedi");
+        }
+    }
+
+    private void captureUsage(ChatResponse response, AtomicInteger tokenIn, AtomicInteger tokenOut) {
+        int in = tokenIn(response);
+        int out = tokenOut(response);
+        if (in > 0) {
+            tokenIn.set(in);
+        }
+        if (out > 0) {
+            tokenOut.set(out);
+        }
+    }
+
+    private String textOf(ChatResponse response) {
+        if (response == null) {
+            return "";
+        }
+        Generation generation = response.getResult();
+        if (generation == null || generation.getOutput() == null) {
+            return "";
+        }
+        String text = generation.getOutput().getText();
+        return text == null ? "" : text;
+    }
+
+    private int tokenIn(ChatResponse response) {
+        if (response == null || response.getMetadata() == null || response.getMetadata().getUsage() == null) {
+            return 0;
+        }
+        Integer value = response.getMetadata().getUsage().getPromptTokens();
+        return value == null ? 0 : value;
+    }
+
+    private int tokenOut(ChatResponse response) {
+        if (response == null || response.getMetadata() == null || response.getMetadata().getUsage() == null) {
+            return 0;
+        }
+        Integer value = response.getMetadata().getUsage().getCompletionTokens();
+        return value == null ? 0 : value;
+    }
+
+    public long streamTimeoutMillis() {
+        return properties.requestTimeout().toMillis();
+    }
+}

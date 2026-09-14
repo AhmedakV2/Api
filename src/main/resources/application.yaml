@@ -64,6 +64,15 @@ aft:
       authenticated-per-minute: ${AFT_RATE_AUTH:300}
       agent-per-minute: ${AFT_RATE_AGENT:30}
     ws-ticket-ttl: PT60S
+  ai:
+    provider: ${AFT_AI_PROVIDER:ollama}
+    models:
+      planner: ${AFT_AI_MODEL_PLANNER:llama3.1:8b}
+      fast: ${AFT_AI_MODEL_FAST:llama3.1:8b}
+      embedding: ${AFT_AI_EMBEDDING_MODEL:nomic-embed-text}
+    request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT120S}
+    max-window-messages: ${AFT_AI_MAX_WINDOW_MESSAGES:40}
+    max-window-tokens: ${AFT_AI_MAX_WINDOW_TOKENS:24000}
 
 management:
   endpoints:

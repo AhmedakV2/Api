@@ -71,6 +71,13 @@ public class DeviceRegistryService {
     }
 
     @Transactional(readOnly = true)
+    public boolean existsInOrg(UUID deviceId, UUID orgId) {
+        return deviceRepository.findById(deviceId)
+                .map(device -> device.getOrgId().equals(orgId))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
     public List<DeviceDto> listByOrg(UUID orgId) {
         return deviceRepository.findByOrgIdOrderByLastSeenAtDesc(orgId).stream().map(this::toDto).toList();
     }
