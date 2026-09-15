@@ -4,7 +4,7 @@ CREATE TABLE client_device (
     user_id UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
     hostname VARCHAR(160) NOT NULL,
     os VARCHAR(64) NOT NULL,
-    app_version VARVHAR(32) NOT NULL,
+    app_version VARCHAR(32) NOT NULL,
     api_key_id UUID REFERENCES api_key(id) ON DELETE SET NULL,
     last_seen_at TIMESTAMPTZ,
     status VARCHAR(16) NOT NULL DEFAULT 'OFFLINE',

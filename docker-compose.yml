@@ -14,11 +14,6 @@ services:
       interval: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
 
   aft-api:
     build: .
@@ -29,7 +24,8 @@ services:
       AFT_DB_URL: jdbc:postgresql://postgres:5432/aft
       AFT_DB_USER: aft
       AFT_DB_PASSWORD: aft
-      AFT_REDIS_HOST: redis
+      AFT_STATE_PROVIDER: coherence
+      AFT_COHERENCE_CLIENT: direct
       AFT_CORS_ORIGINS: http://localhost:5173
     ports:
       - "8080:8080"

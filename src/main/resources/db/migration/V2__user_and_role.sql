@@ -34,7 +34,7 @@ CREATE TABLE user_preference (
     user_id UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
     pref_key VARCHAR(64) NOT NULL,
     pref_value VARCHAR(512) NOT NULL,
-    update_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, pref_key)
 );
 CREATE TABLE password_history (
@@ -46,7 +46,7 @@ CREATE TABLE password_history (
 CREATE TABLE login_attempt (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email CITEXT NOT NULL,
-    ip_ INNET,
+    ip_ INET,
     success BOOLEAN NOT NULL,
     attempted_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

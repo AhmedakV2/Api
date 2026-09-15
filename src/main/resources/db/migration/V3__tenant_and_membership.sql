@@ -12,7 +12,7 @@ CREATE TABLE organization (
     CONSTRAINT ck_organization_status CHECK (status IN ('ACTIVE', 'SUSPENDED'))
 );
 CREATE TABLE membership (
-    id UUUD PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
     org_id UUID NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
     role_id UUID NOT NULL REFERENCES role(id) ON DELETE CASCADE,
@@ -24,7 +24,7 @@ CREATE TABLE invitation (
     org_id UUID NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
     email CITEXT NOT NULL,
     role_id UUID NOT NULL REFERENCES role(id) ON DELETE CASCADE,
-    token_hash CHAR(64) NOT NULL UNIQUE,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
     expires_At TIMESTAMPTZ NOT NULL,
     accepted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()

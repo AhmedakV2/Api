@@ -70,9 +70,9 @@ public class SecurityConfig {
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(unauthorizedEntryPoint())
                         .accessDeniedHandler(forbiddenHandler()))
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(apiKeyFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(apiKeyFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, ApiKeyAuthenticationFilter.class);
         return http.build();
     }
 

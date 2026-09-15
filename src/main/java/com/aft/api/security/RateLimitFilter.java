@@ -7,11 +7,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.List;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.RedisScript;
+import com.aft.api.state.CounterStore;
+import com.aft.api.state.StateNamespaces;
+import com.aft.api.state.StateStoreProvider;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,15 +23,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final Duration WINDOW = Duration.ofMinutes(1);
     private static final String AGENT_MESSAGE_PATH = "/api/v1/agent/sessions/";
+    private static final String PROBLEM_BODY =
+            "{\"type\":\"about:blank\",\"title\":\"Too Many Requests\",\"status\":429,"
+                    + "\"detail\":\"Hiz siniri asildi\",\"instance\":\"%s\"}";
 
-    private final StringRedisTemplate redis;
-    private final RedisScript<List> rateLimitScript;
+    private final CounterStore counters;
     private final SecurityProperties properties;
 
-    public RateLimitFilter(StringRedisTemplate redis, RedisScript<List> rateLimitScript,
-                           SecurityProperties properties) {
-        this.redis = redis;
-        this.rateLimitScript = rateLimitScript;
+    public RateLimitFilter(StateStoreProvider stateStores, SecurityProperties properties) {
+        this.counters = stateStores.counter(StateNamespaces.RATE_LIMIT);
         this.properties = properties;
     }
 
@@ -49,18 +49,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
         boolean authenticated = auth != null && auth.isAuthenticated();
         String bucket = authenticated ? auth.getName() : clientIp(request);
         int limit = resolveLimit(request, authenticated);
-        String key = "aft:rate:" + bucket + ":" + limit;
+        String key = bucket + ":" + limit;
 
-        List<?> result = redis.execute(rateLimitScript, List.of(key), String.valueOf(WINDOW.toMillis()));
-        long count = result == null ? 0L : ((Number) result.get(0)).longValue();
-        long ttlMillis = result == null ? WINDOW.toMillis() : ((Number) result.get(1)).longValue();
+        CounterStore.Window window = counters.increment(key, WINDOW);
+        long count = window.count();
 
         response.setHeader("X-RateLimit-Limit", String.valueOf(limit));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, limit - count)));
 
         if (count > limit) {
-            response.setHeader("Retry-After", String.valueOf(Math.max(1, ttlMillis / 1000)));
-            response.sendError(429, "Hiz siniri asildi");
+            response.setHeader("Retry-After", String.valueOf(Math.max(1, window.remaining().toSeconds())));
+            response.setStatus(429);
+            response.setContentType("application/problem+json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(PROBLEM_BODY.formatted(request.getRequestURI()));
+            response.getWriter().flush();
             return;
         }
         chain.doFilter(request, response);

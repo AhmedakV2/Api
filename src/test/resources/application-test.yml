@@ -4,11 +4,12 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
-  data:
-    redis:
-      host: localhost
 
 aft:
+  state:
+    provider: coherence
+    coherence:
+      client: direct
   cors:
     allowed-origins: http://localhost
   jwt:

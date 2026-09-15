@@ -1,4 +1,7 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
   application:
     name: aft-api
   profiles:
@@ -25,18 +28,22 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
     clean-disabled: true
-  data:
-    redis:
-      host: ${AFT_REDIS_HOST:}
-      port: 6379
-      password: ${AFT_REDIS_PASSWORD:}
   threads:
     virtual:
       enabled: true
   jackson:
     default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
+  ai:
+    model:
+      chat: ${AFT_AI_PROVIDER:ollama}
+      embedding: ${AFT_AI_PROVIDER:ollama}
+      image: none
+      moderation: none
+      audio:
+        speech: none
 
 server:
   port: 8080
@@ -48,6 +55,17 @@ server:
       charset: UTF-8
       force: true
 aft:
+  state:
+    provider: ${AFT_STATE_PROVIDER:coherence}
+    coherence:
+      cache-prefix: ${AFT_COHERENCE_CACHE_PREFIX:aft-}
+      topic-name: ${AFT_COHERENCE_TOPIC:aft-tool-result}
+      session-name: ${AFT_COHERENCE_SESSION:}
+      client: ${AFT_COHERENCE_CLIENT:remote}
+      proxy-address: ${AFT_COHERENCE_PROXY_HOST:}
+      proxy-port: ${AFT_COHERENCE_PROXY_PORT:}
+      cluster-name: ${AFT_COHERENCE_CLUSTER:}
+      cache-config: ${AFT_COHERENCE_CACHE_CONFIG:}
   cors:
     allowed-origins: ${AFT_CORS_ORIGINS:http://localhost:5173}
   jwt:

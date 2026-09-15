@@ -19,7 +19,7 @@ public class Invitation {
     @Column(name = "org_id", nullable = false, updatable = false)
     private UUID orgId;
 
-    @Column(name = "email", nullable = false, updatable = false)
+    @Column(name = "email", nullable = false, updatable = false, columnDefinition = "citext")
     private String email;
 
     @Column(name = "role_id", nullable = false, updatable = false)
