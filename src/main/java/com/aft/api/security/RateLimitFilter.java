@@ -24,10 +24,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Duration WINDOW = Duration.ofMinutes(1);
     private static final String AGENT_MESSAGE_PATH = "/api/v1/agent/sessions/";
     private static final String PROBLEM_BODY =
-            "{\"type\":\"https://docs.aft.local/errors/RATE_LIMIT_EXCEEDED\","
-                    + "\"title\":\"Hiz siniri asildi\",\"status\":429,"
-                    + "\"detail\":\"Hiz siniri asildi\",\"instance\":\"%s\","
-                    + "\"code\":\"RATE_LIMIT_EXCEEDED\"}";
+            "{\"type\":\"about:blank\",\"title\":\"Too Many Requests\",\"status\":429,"
+                    + "\"detail\":\"Hiz siniri asildi\",\"instance\":\"%s\"}";
 
     private final CounterStore counters;
     private final SecurityProperties properties;
