@@ -4,10 +4,8 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
-/** Web katmanina arac katalogunu sunan dar arayuz. */
 @Component
 public class ToolPolicyView {
-
     private final ToolRegistry registry;
 
     public ToolPolicyView(ToolRegistry registry) {

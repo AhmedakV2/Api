@@ -11,10 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
-/** Arac cagrisini cihazin kendi kuyruguna yazar. Capraz cihaz cagrisi engellenir. */
 @Component
 public class ToolChannel {
-
     private static final Logger log = LoggerFactory.getLogger(ToolChannel.class);
 
     private final SimpMessagingTemplate messaging;
@@ -36,7 +34,6 @@ public class ToolChannel {
                 deviceId, invocation.toolName(), invocation.callId());
     }
 
-    /** Sonuc, cagriyi bekleyen kopyaya yonlendirilir. */
     public void deliver(ToolResult result) {
         relay.publish(result);
     }

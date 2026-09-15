@@ -4,10 +4,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
-/** Istemciden donen icerikteki talimat kaliplarini etkisizlestirir. */
 @Component
 public class PromptSanitizer {
-
     private static final List<Pattern> INJECTION_PATTERNS = List.of(
             Pattern.compile("(?i)\\b(ignore|disregard|forget)\\s+(all\\s+)?(previous|prior|above)\\s+"
                     + "(instructions?|prompts?|rules?)"),
@@ -31,7 +29,6 @@ public class PromptSanitizer {
         return result;
     }
 
-    /** Boyut siniri asilirsa icerik kirpilir ve kirpildigi bildirilir. */
     public Trimmed trim(String content, int maxBytes) {
         if (content == null) {
             return new Trimmed("", false);

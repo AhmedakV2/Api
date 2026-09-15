@@ -12,10 +12,8 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.stereotype.Component;
 
-/** Baglanti aninda tek kullanimlik bilet dogrulanir; bilet ikinci kez kullanilamaz. */
 @Component
 public class StompAuthInterceptor implements ChannelInterceptor {
-
     private static final Logger log = LoggerFactory.getLogger(StompAuthInterceptor.class);
     private static final String TICKET_HEADER = "X-Aft-Ticket";
     private static final String DEVICE_HEADER = "X-Aft-Device";

@@ -2,13 +2,11 @@ package com.aft.api.agent.tool;
 
 import java.util.UUID;
 
-/** Istemciden donen arac sonucu. */
 public record ToolResult(UUID callId,
                          boolean ok,
                          String contentJson,
                          String error,
                          boolean truncated) {
-
     public static ToolResult ok(UUID callId, String contentJson, boolean truncated) {
         return new ToolResult(callId, true, contentJson, null, truncated);
     }

@@ -11,11 +11,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.hibernate.annotations.Type;
 
-/** Yalnizca cagrinin ozeti tutulur; istemciden donen ham icerik kalicilastirilmaz. */
 @Entity
 @Table(name = "agent_tool_call")
 public class AgentToolCall {
-
     private static final int SUMMARY_LIMIT = 2048;
 
     @Id

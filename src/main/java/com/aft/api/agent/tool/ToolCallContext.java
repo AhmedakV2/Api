@@ -3,9 +3,7 @@ package com.aft.api.agent.tool;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Bir agent turu boyunca tasinan arac baglami. */
 public final class ToolCallContext {
-
     public static final String KEY = "aftToolCallContext";
 
     private final UUID sessionId;

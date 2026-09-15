@@ -8,10 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/** Bekleyen arac cagrilari. Sonucu bekleyen is parcacigi cagrinin yapildigi kopyada durur. */
 @Component
 public class PendingToolRegistry {
-
     private static final Logger log = LoggerFactory.getLogger(PendingToolRegistry.class);
 
     private final Map<UUID, CompletableFuture<ToolResult>> pending = new ConcurrentHashMap<>();
