@@ -73,6 +73,9 @@ aft:
     request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT120S}
     max-window-messages: ${AFT_AI_MAX_WINDOW_MESSAGES:40}
     max-window-tokens: ${AFT_AI_MAX_WINDOW_TOKENS:24000}
+    tool-timeout: ${AFT_AI_TOOL_TIMEOUT_MS:PT30S}
+    max-tool-hops: ${AFT_AI_MAX_TOOL_HOPS:12}
+    max-tool-result-bytes: ${AFT_AI_MAX_TOOL_RESULT_BYTES:262144}
 
 management:
   endpoints:
