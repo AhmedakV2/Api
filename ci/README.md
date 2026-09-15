@@ -93,4 +93,21 @@ bin/start.sh
 
 `AFT_JWT_SECRET` en az 32 karakter olmalidir, aksi halde uygulama acilista durur.
 
+## Dagitik durum deposu
+
+Uygulama oturum kilidi, hiz siniri, WebSocket bileti, cihaz kaydi ve araclar arasi
+mesajlasma icin Oracle Coherence kullanir.
+
+| Degisken | Aciklama |
+|---|---|
+| `AFT_COHERENCE_CLIENT` | `remote` (Coherence*Extend uzerinden proxy'ye baglanir) veya `direct` (kume uyesi olur) |
+| `AFT_COHERENCE_PROXY_HOST` / `AFT_COHERENCE_PROXY_PORT` | `remote` modunda Extend proxy adresi |
+| `AFT_COHERENCE_CLUSTER` | Kume adi |
+| `AFT_COHERENCE_CACHE_PREFIX` | Cache adlarinin oneki, varsayilan `aft-` |
+| `AFT_COHERENCE_TOPIC` | Arac sonucu kanalinin adi |
+| `AFT_COHERENCE_CACHE_CONFIG` | Ozel cache yapilandirma XML yolu, bos birakilirsa Coherence varsayilani kullanilir |
+
+Kullanilan cache'ler: `aft-ws-ticket`, `aft-ws-device`, `aft-login-fail`, `aft-login-lock`,
+`aft-rate-limit` ve `aft-tool-result` topic'i. Tum girdiler TTL tasir, kalicilik gerekmez.
+
 Durdurmak icin `bin/stop.sh`. Loglar `logs/aft-api.out` altindadir.

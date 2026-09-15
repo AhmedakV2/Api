@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user_preferences")
+@Table(name = "user_preference")
 public class UserPreference {
     @EmbeddedId
     private Key key;
