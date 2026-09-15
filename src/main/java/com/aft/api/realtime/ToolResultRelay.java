@@ -10,13 +10,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * Arac sonucunu cagrinin yapildigi uygulama kopyasina ulastirir.
- * Sonuc once yerel kayitta aranir, bulunamazsa Redis kanalina yayilir.
- */
 @Component
 public class ToolResultRelay implements MessageListener {
-
     public static final String CHANNEL = "aft:tool:result";
 
     private static final Logger log = LoggerFactory.getLogger(ToolResultRelay.class);

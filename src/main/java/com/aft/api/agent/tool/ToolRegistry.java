@@ -10,10 +10,8 @@ import java.util.function.Function;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
 
-/** Modele yalnizca cihazin gercekten calistirabildigi araclar sunulur. */
 @Component
 public class ToolRegistry {
-
     private final Map<String, ToolSpec> specs;
     private final RemoteToolExecutor executor;
     private final DeviceRegistryService deviceRegistry;

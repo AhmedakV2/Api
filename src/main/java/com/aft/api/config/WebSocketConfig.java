@@ -8,11 +8,9 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-/** Arac cagrisi kanali. Kimlik, baglanti aninda tek kullanimlik bilet ile dogrulanir. */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-
     public static final String ENDPOINT = "/ws/agent";
     public static final String TOOL_QUEUE = "/queue/tools";
 

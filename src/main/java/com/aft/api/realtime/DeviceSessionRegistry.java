@@ -6,10 +6,8 @@ import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-/** Cihaz oturum eslemesi Redis uzerinde paylasilir; yapiskan oturum gerekmez. */
 @Component
 public class DeviceSessionRegistry {
-
     private static final String KEY_PREFIX = "aft:ws:device:";
     private static final Duration TTL = Duration.ofHours(12);
 
@@ -32,7 +30,6 @@ public class DeviceSessionRegistry {
         return Boolean.TRUE.equals(redis.hasKey(key(deviceId)));
     }
 
-    /** Cihazin bagli oldugu uygulama kopyasinin kimligi; sonuc yonlendirmesi buna gore yapilir. */
     public Optional<String> ownerInstance(UUID deviceId) {
         String value = redis.opsForValue().get(key(deviceId));
         return value == null ? Optional.empty() : Optional.of(value.split("\\|")[0]);

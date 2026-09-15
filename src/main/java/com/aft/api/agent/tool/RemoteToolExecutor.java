@@ -21,10 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Arac cagrisini istemciye yonlendirir ve sonucu bekler. Yurutme sunucuda yapilmaz. */
 @Component
 public class RemoteToolExecutor {
-
     private static final Logger log = LoggerFactory.getLogger(RemoteToolExecutor.class);
 
     private final ToolChannel toolChannel;
