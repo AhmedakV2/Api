@@ -9,6 +9,8 @@ import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.prompt.SystemPrompts;
 import com.aft.api.agent.provider.ModelProvider;
 import com.aft.api.agent.provider.ModelRouter;
+import com.aft.api.agent.tool.ToolCallContext;
+import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.common.exception.ErrorCode;
 import com.aft.api.config.AiProperties;
@@ -21,6 +23,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.ToolCallback;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import reactor.core.Disposable;
 
@@ -34,6 +39,7 @@ public class AgentBrainService {
     private final ModelRouter modelRouter;
     private final ModelUsageService usageService;
     private final SseEmitterRegistry emitters;
+    private final ToolRegistry toolRegistry;
     private final AiProperties properties;
 
     public AgentBrainService(AgentSessionManager sessionManager,
@@ -42,6 +48,7 @@ public class AgentBrainService {
                              ModelRouter modelRouter,
                              ModelUsageService usageService,
                              SseEmitterRegistry emitters,
+                             ToolRegistry toolRegistry,
                              AiProperties properties) {
         this.sessionManager = sessionManager;
         this.conversationWindow = conversationWindow;
@@ -49,6 +56,7 @@ public class AgentBrainService {
         this.modelRouter = modelRouter;
         this.usageService = usageService;
         this.emitters = emitters;
+        this.toolRegistry = toolRegistry;
         this.properties = properties;
     }
 
@@ -57,11 +65,13 @@ public class AgentBrainService {
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
         List<Message> prompt = buildPrompt(session);
-        ChatResponse response = callModel(session, prompt);
+        ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
+        ChatResponse response = callModel(session, prompt, toolContext);
         String text = textOf(response);
 
         AgentMessage saved = sessionManager.append(sessionId, MessageRole.ASSISTANT, text,
                 ConversationWindow.estimate(text));
+        toolContext.bindMessage(saved.getId());
         int tokenIn = tokenIn(response);
         int tokenOut = tokenOut(response);
         usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(), tokenIn, tokenOut);
@@ -83,7 +93,8 @@ public class AgentBrainService {
         AtomicInteger tokenIn = new AtomicInteger();
         AtomicInteger tokenOut = new AtomicInteger();
 
-        Disposable subscription = provider.stream(prompt, session.getModel())
+        ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
+        Disposable subscription = provider.stream(prompt, options(session, toolContext))
                 .doOnNext(chunk -> {
                     String piece = textOf(chunk);
                     if (!piece.isEmpty()) {
@@ -118,9 +129,9 @@ public class AgentBrainService {
                 sessionManager.recentHistory(session.getId(), properties.maxWindowMessages()));
     }
 
-    private ChatResponse callModel(AgentSession session, List<Message> prompt) {
+    private ChatResponse callModel(AgentSession session, List<Message> prompt, ToolCallContext toolContext) {
         try {
-            return modelRouter.provider().call(prompt, session.getModel());
+            return modelRouter.provider().call(prompt, options(session, toolContext));
         } catch (RuntimeException e) {
             log.error("Model cagrisi basarisiz sessionId={}", session.getId(), e);
             sessionManager.markFailed(session.getId());
@@ -165,6 +176,15 @@ public class AgentBrainService {
         }
         Integer value = response.getMetadata().getUsage().getCompletionTokens();
         return value == null ? 0 : value;
+    }
+
+    private ToolCallingChatOptions options(AgentSession session, ToolCallContext toolContext) {
+        List<ToolCallback> callbacks = toolRegistry.callbacksFor(session.getDeviceId());
+        return ToolCallingChatOptions.builder()
+                .model(session.getModel())
+                .toolCallbacks(callbacks)
+                .toolContext(Map.of(ToolCallContext.KEY, toolContext))
+                .build();
     }
 
     public long streamTimeoutMillis() {

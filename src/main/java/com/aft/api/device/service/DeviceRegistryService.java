@@ -71,6 +71,21 @@ public class DeviceRegistryService {
     }
 
     @Transactional(readOnly = true)
+    public boolean belongsToUser(UUID deviceId, UUID userId) {
+        return deviceRepository.findById(deviceId)
+                .map(device -> device.getUserId().equals(userId))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Set<String> enabledToolNames(UUID deviceId) {
+        return capabilityRepository.findByKeyDeviceId(deviceId).stream()
+                .filter(cap -> cap.isEnabled())
+                .map(cap -> cap.getKey().toolName())
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    @Transactional(readOnly = true)
     public boolean existsInOrg(UUID deviceId, UUID orgId) {
         return deviceRepository.findById(deviceId)
                 .map(device -> device.getOrgId().equals(orgId))
