@@ -1,11 +1,13 @@
 package com.aft.api.support;
 
+import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+@Tag("integration")
 public abstract class TestcontainersConfig {
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
