@@ -1,31 +1,45 @@
 services:
-  postgres:
+  aft-agent-db:
     image: pgvector/pgvector:pg16
+    container_name: aft-agent-db
     environment:
-      POSTGRES_DB: aft_api
-      POSTGRES_USER: aft_api
-      POSTGRES_PASSWORD: Akg1312!
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${AFT_DB_NAME}
+      POSTGRES_USER: ${AFT_DB_USER}
+      POSTGRES_PASSWORD: ${AFT_DB_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - aft-agent-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aft_api -d aft_api"]
+      test: ["CMD-SHELL", "pg_isready -U ${AFT_DB_USER} -d ${AFT_DB_NAME}"]
       interval: 5s
-      retries: 10
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
 
-  aft-api:
-    build: .
-    depends_on:
-      postgres:
-        condition: service_healthy
+  aft-agent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_PORT: 8092
+    image: aft-agent-api:local
+    container_name: aft-agent-api
+    env_file:
+      - .env
     environment:
-      AFT_DB_URL: jdbc:postgresql://postgres:5432/aft_api
-      AFT_DB_USER: aft_api
-      AFT_DB_PASSWORD: Akg1312!
-      AFT_CORS_ORIGINS: http://localhost:5173
+      AFT_SERVER_PORT: 8092
+      AFT_DB_URL: jdbc:postgresql://aft-agent-db:5432/${AFT_DB_NAME}
+    depends_on:
+      aft-agent-db:
+        condition: service_healthy
     ports:
-      - "8092:8092"
+      - "${AFT_API_HOST_BIND:-0.0.0.0}:${AFT_API_HOST_PORT:-8092}:8092"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8092/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
+    restart: unless-stopped
 
 volumes:
-  pgdata:
+  aft-agent-pgdata:

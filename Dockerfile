@@ -1,14 +1,18 @@
-FROM maven:3.9-eclipse-temurin-25 AS build
-WORKDIR /src
-COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
-COPY src ./src
-RUN mvn -B -q clean package -DskipTests
-
 FROM eclipse-temurin:25-jre-alpine
+
+ARG APP_UID=10001
+ARG APP_PORT=8092
+
+RUN addgroup -S aft && adduser -S -u ${APP_UID} -G aft aft
 WORKDIR /app
-RUN addgroup -S aft && adduser -S aft -G aft
-COPY --from=build /src/target/*.jar app.jar
+
+COPY --chown=aft:aft *.jar /app/app.jar
+
 USER aft
-EXPOSE 8092
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+
+ENV TZ=Europe/Istanbul \
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError"
+
+EXPOSE ${APP_PORT}
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
