@@ -29,6 +29,10 @@
 			<id>akgun-release</id>
 			<url>https://repo.akgun.com.tr/repository/akgun-release/</url>
 		</repository>
+		<snapshotRepository>
+			<id>akgun-snapshot</id>
+			<url>https://repo.akgun.com.tr/repository/akgun-snapshot/</url>
+		</snapshotRepository>
 	</distributionManagement>
 	<properties>
 		<java.version>25</java.version>
