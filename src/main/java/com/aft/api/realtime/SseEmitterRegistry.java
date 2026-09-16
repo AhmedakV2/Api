@@ -12,7 +12,6 @@ import reactor.core.Disposable;
 
 @Component
 public class SseEmitterRegistry {
-
     private static final Logger log = LoggerFactory.getLogger(SseEmitterRegistry.class);
 
     private final Map<UUID, Entry> channels = new ConcurrentHashMap<>();
@@ -93,7 +92,6 @@ public class SseEmitterRegistry {
     }
 
     private static final class Entry {
-
         private final SseEmitter emitter;
         private volatile Disposable subscription;
 

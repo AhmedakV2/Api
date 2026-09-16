@@ -4,12 +4,9 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
-  data:
-    redis:
-      host: localhost
 
 aft:
   cors:
     allowed-origins: http://localhost
   jwt:
-    secret:
+    secret: dGVzdC1vbmx5LXNlY3JldC1rZXktZm9yLWNpLTMyLWJ5dGVzLW1pbmltdW0=

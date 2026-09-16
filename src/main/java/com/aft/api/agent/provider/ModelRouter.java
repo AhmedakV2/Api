@@ -9,10 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
-
 @Component
 public class ModelRouter {
-
     private final Map<ProviderName, ModelProvider> providers = new EnumMap<>(ProviderName.class);
     private final AiProperties properties;
 
@@ -51,4 +49,3 @@ public class ModelRouter {
         }
     }
 }
-

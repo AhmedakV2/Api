@@ -2,7 +2,7 @@ CREATE TABLE agent_session (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
-    device_id UUID NOT NULL REFERENCES client_device(id) ON DELETE SET NULL,
+    device_id UUID REFERENCES client_device(id) ON DELETE SET NULL,
     title VARCHAR(200) NOT NULL DEFAULT '',
     mode VARCHAR(32) NOT NULL DEFAULT 'CHAT',
     model VARCHAR(80) NOT NULL,
@@ -36,12 +36,12 @@ CREATE TABLE agent_tool_call (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE TABLE model_usage (
-    id UUUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
     session_id UUID REFERENCES agent_session(id) ON DELETE SET NULL,
     model VARCHAR(80) NOT NULL,
-    token_int INT NOT NULL DEFAULT 0,
+    token_in INT NOT NULL DEFAULT 0,
     token_out INT NOT NULL DEFAULT 0,
     cost NUMERIC(12, 6) NOT NULL DEFAULT 0,
     recorded_At TIMESTAMPTZ NOT NULL DEFAULT now()

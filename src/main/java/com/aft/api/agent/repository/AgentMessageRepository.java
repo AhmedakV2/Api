@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AgentMessageRepository extends JpaRepository<AgentMessage, UUID> {
-
     List<AgentMessage> findBySessionIdOrderBySeqAsc(UUID sessionId);
 
     @Query("SELECT m FROM AgentMessage m WHERE m.sessionId = :sessionId ORDER BY m.seq DESC LIMIT :limit")

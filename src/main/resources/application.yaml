@@ -1,4 +1,7 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
   application:
     name: aft-api
   profiles:
@@ -25,18 +28,22 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
     clean-disabled: true
-  data:
-    redis:
-      host: ${AFT_REDIS_HOST:}
-      port: 6379
-      password: ${AFT_REDIS_PASSWORD:}
   threads:
     virtual:
       enabled: true
   jackson:
     default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
+  ai:
+    model:
+      chat: ${AFT_AI_PROVIDER:ollama}
+      embedding: ${AFT_AI_PROVIDER:ollama}
+      image: none
+      moderation: none
+      audio:
+        speech: none
 
 server:
   port: 8080
@@ -64,6 +71,18 @@ aft:
       authenticated-per-minute: ${AFT_RATE_AUTH:300}
       agent-per-minute: ${AFT_RATE_AGENT:30}
     ws-ticket-ttl: PT60S
+  ai:
+    provider: ${AFT_AI_PROVIDER:ollama}
+    models:
+      planner: ${AFT_AI_MODEL_PLANNER:llama3.1:8b}
+      fast: ${AFT_AI_MODEL_FAST:llama3.1:8b}
+      embedding: ${AFT_AI_EMBEDDING_MODEL:nomic-embed-text}
+    request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT120S}
+    max-window-messages: ${AFT_AI_MAX_WINDOW_MESSAGES:40}
+    max-window-tokens: ${AFT_AI_MAX_WINDOW_TOKENS:24000}
+    tool-timeout: ${AFT_AI_TOOL_TIMEOUT_MS:PT30S}
+    max-tool-hops: ${AFT_AI_MAX_TOOL_HOPS:12}
+    max-tool-result-bytes: ${AFT_AI_MAX_TOOL_RESULT_BYTES:262144}
 
 management:
   endpoints:

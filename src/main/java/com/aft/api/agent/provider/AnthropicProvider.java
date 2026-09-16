@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnBean(AnthropicChatModel.class)
 public class AnthropicProvider implements ModelProvider {
-
     private final AnthropicChatModel chatModel;
 
     public AnthropicProvider(AnthropicChatModel chatModel) {
@@ -19,6 +18,7 @@ public class AnthropicProvider implements ModelProvider {
     public ProviderName name() {
         return ProviderName.ANTHROPIC;
     }
+
     @Override
     public ChatModel chatModel() {
         return chatModel;

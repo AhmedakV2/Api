@@ -1,46 +1,54 @@
 package com.aft.api.security;
 
 import com.aft.api.config.SecurityProperties;
+import com.aft.api.state.CounterStore;
+import com.aft.api.state.KeyValueStore;
+import com.aft.api.state.StateNamespaces;
+import com.aft.api.state.StateStoreProvider;
 import java.time.Duration;
 import java.util.Locale;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class LoginAttemptService {
-    private static final String KEY_PREFIX = "aft:login:fail:";
-
-    private final StringRedisTemplate redis;
+    private final CounterStore failures;
+    private final KeyValueStore locks;
     private final SecurityProperties properties;
 
-    public LoginAttemptService(StringRedisTemplate redis, SecurityProperties properties) {
-        this.redis = redis;
+    public LoginAttemptService(StateStoreProvider stateStores, SecurityProperties properties) {
+        this.failures = stateStores.counter(StateNamespaces.LOGIN_FAIL);
+        this.locks = stateStores.keyValue(StateNamespaces.LOGIN_LOCK);
         this.properties = properties;
     }
 
     public boolean isLocked(String email) {
-        String value = redis.opsForValue().get(key(email));
-        return value != null && Integer.parseInt(value) >= properties.lockout().maxAttempts();
+        return remainingLock(email).compareTo(Duration.ZERO) > 0;
     }
 
     public void recordFailure(String email) {
-        String redisKey = key(email);
-        Long current = redis.opsForValue().increment(redisKey);
-        if (current != null && current == 1L) {
-            redis.expire(redisKey, properties.lockout().duration());
+        String key = key(email);
+        Duration duration = properties.lockout().duration();
+        CounterStore.Window window = failures.increment(key, duration);
+        if (window.count() >= properties.lockout().maxAttempts()) {
+            long until = System.currentTimeMillis() + duration.toMillis();
+            locks.put(key, Long.toString(until), duration);
         }
     }
 
     public void reset(String email) {
-        redis.delete(key(email));
+        String key = key(email);
+        failures.reset(key, properties.lockout().duration());
+        locks.delete(key);
     }
 
     public Duration remainingLock(String email) {
-        Long seconds = redis.getExpire(key(email));
-        return (seconds == null || seconds < 0) ? Duration.ZERO : Duration.ofSeconds(seconds);
+        return locks.get(key(email))
+                .map(value -> Duration.ofMillis(Long.parseLong(value) - System.currentTimeMillis()))
+                .filter(remaining -> remaining.compareTo(Duration.ZERO) > 0)
+                .orElse(Duration.ZERO);
     }
 
     private String key(String email) {
-        return KEY_PREFIX + email.toLowerCase(Locale.ROOT);
+        return email.toLowerCase(Locale.ROOT);
     }
 }

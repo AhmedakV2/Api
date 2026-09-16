@@ -13,3 +13,8 @@ logging:
 aft:
   jwt:
     secret: ${AFT_JWT_SECRET:}
+
+spring:
+  ai:
+    ollama:
+      base-url: ${AFT_OLLAMA_URL:http://localhost:11434}

@@ -20,7 +20,6 @@ import com.aft.api.security.AftPrincipal;
 @RequestMapping("/api/v1/agent/sessions")
 @Tag(name = "Agent Akis", description = "Sunucudan istemciye yanit akisi")
 public class StreamController {
-
     private final AgentSessionManager sessionManager;
     private final AgentBrainService brainService;
     private final SseEmitterRegistry emitters;

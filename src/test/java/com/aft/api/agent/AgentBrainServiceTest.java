@@ -19,6 +19,7 @@ import com.aft.api.agent.provider.ModelRouter;
 import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
 import com.aft.api.agent.service.ModelUsageService;
+import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.config.AiProperties;
 import com.aft.api.realtime.SseEmitterRegistry;
@@ -38,7 +39,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AgentBrainServiceTest {
-
     private static final UUID SESSION_ID = UUID.randomUUID();
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID ORG_ID = UUID.randomUUID();
@@ -49,6 +49,8 @@ class AgentBrainServiceTest {
     private ModelRouter modelRouter;
     @Mock
     private ModelUsageService usageService;
+    @Mock
+    private ToolRegistry toolRegistry;
 
     private AiProperties properties;
     private AgentBrainService brainService;
@@ -57,15 +59,16 @@ class AgentBrainServiceTest {
     @BeforeEach
     void setUp() {
         properties = new AiProperties("ollama", new AiProperties.Models("buyuk", "kucuk", null),
-                Duration.ofSeconds(30), 40, 24000);
+                Duration.ofSeconds(30), 40, 24000, Duration.ofSeconds(30), 12, 262144);
         session = new AgentSession(ORG_ID, USER_ID, null, "test", SessionMode.CHAT, "buyuk");
         ReflectionTestUtils.setField(session, "id", SESSION_ID);
 
         brainService = new AgentBrainService(sessionManager, new ConversationWindow(properties),
-                new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(), properties);
+                new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(), toolRegistry, properties);
 
         when(sessionManager.requireOpen(SESSION_ID, USER_ID)).thenReturn(session);
-        when(sessionManager.history(any())).thenReturn(List.of());
+        when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
+        when(toolRegistry.callbacksFor(any())).thenReturn(List.of());
         when(sessionManager.append(any(), any(), any(), anyInt()))
                 .thenAnswer(call -> new AgentMessage(SESSION_ID, 1, call.getArgument(1),
                         call.getArgument(2), call.getArgument(3)));

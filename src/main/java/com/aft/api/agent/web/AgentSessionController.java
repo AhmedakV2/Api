@@ -36,7 +36,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/agent/sessions")
 @Tag(name = "Agent Oturumu", description = "Oturum yasam dongusu ve mesajlasma")
 public class AgentSessionController {
-
     private final AgentSessionManager sessionManager;
     private final AgentBrainService brainService;
     private final SseEmitterRegistry emitters;

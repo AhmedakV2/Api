@@ -13,10 +13,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ModelRouterTest {
-
     private AiProperties properties(String provider, String planner, String fast) {
         return new AiProperties(provider, new AiProperties.Models(planner, fast, null),
-                Duration.ofSeconds(30), 40, 24000);
+                Duration.ofSeconds(30), 40, 24000, Duration.ofSeconds(30), 12, 262144);
     }
 
     @Test

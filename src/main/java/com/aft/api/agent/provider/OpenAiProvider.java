@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnBean(OpenAiChatModel.class)
 public class OpenAiProvider implements ModelProvider {
-
     private final OpenAiChatModel chatModel;
 
     public OpenAiProvider(OpenAiChatModel chatModel) {

@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/agent")
 @Tag(name = "Agent Model", description = "Model listesi ve kullanim ozeti")
 public class AgentModelController {
-
     private static final int DEFAULT_WINDOW_DAYS = 30;
 
     private final ModelRouter modelRouter;

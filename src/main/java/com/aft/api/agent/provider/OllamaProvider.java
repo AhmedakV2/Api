@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnBean(OllamaChatModel.class)
 public class OllamaProvider implements ModelProvider {
-
     private final OllamaChatModel chatModel;
 
     public OllamaProvider(OllamaChatModel chatModel) {
@@ -19,6 +18,7 @@ public class OllamaProvider implements ModelProvider {
     public ProviderName name() {
         return ProviderName.OLLAMA;
     }
+
     @Override
     public ChatModel chatModel() {
         return chatModel;
