@@ -96,18 +96,49 @@ bin/start.sh
 ## Dagitik durum deposu
 
 Uygulama oturum kilidi, hiz siniri, WebSocket bileti, cihaz kaydi ve araclar arasi
-mesajlasma icin Oracle Coherence kullanir.
+mesajlasma icin Valkey kullanir. Valkey, Redis protokolunu konusan BSD-3 lisansli
+acik kaynak bir sunucudur; Redis ve protokol uyumlu diger sunucular da calisir.
 
 | Degisken | Aciklama |
 |---|---|
-| `AFT_COHERENCE_CLIENT` | `remote` (Coherence*Extend uzerinden proxy'ye baglanir) veya `direct` (kume uyesi olur) |
-| `AFT_COHERENCE_PROXY_HOST` / `AFT_COHERENCE_PROXY_PORT` | `remote` modunda Extend proxy adresi |
-| `AFT_COHERENCE_CLUSTER` | Kume adi |
-| `AFT_COHERENCE_CACHE_PREFIX` | Cache adlarinin oneki, varsayilan `aft-` |
-| `AFT_COHERENCE_TOPIC` | Arac sonucu kanalinin adi |
-| `AFT_COHERENCE_CACHE_CONFIG` | Ozel cache yapilandirma XML yolu, bos birakilirsa Coherence varsayilani kullanilir |
+| `AFT_STATE_PROVIDER` | `valkey` |
+| `AFT_VALKEY_HOST` / `AFT_VALKEY_PORT` | Valkey adresi, varsayilan 127.0.0.1:6379 |
+| `AFT_VALKEY_PASSWORD` | `requirepass` ile tanimlanan parola |
+| `AFT_VALKEY_DB` | Veritabani indeksi, varsayilan 0 |
+| `AFT_VALKEY_PREFIX` | Anahtar oneki, varsayilan `aft:` |
 
-Kullanilan cache'ler: `aft-ws-ticket`, `aft-ws-device`, `aft-login-fail`, `aft-login-lock`,
-`aft-rate-limit` ve `aft-tool-result` topic'i. Tum girdiler TTL tasir, kalicilik gerekmez.
+Kullanilan anahtar gruplari: `aft:ws-ticket:*`, `aft:ws-device:*`, `aft:login-fail:*`,
+`aft:login-lock:*`, `aft:rate-limit:*` ve `aft:tool:result` kanali. Tum anahtarlar TTL
+tasir, kalicilik gerekmez.
+
+### Rocky Linux 8 kurulumu
+
+```
+sudo dnf install -y epel-release
+sudo dnf search valkey
+sudo dnf install -y valkey
+```
+
+Depoda valkey bulunmazsa Redis 6.2 de kullanilabilir; RHEL 8 AppStream surumu BSD-3
+lisanslidir ve protokol uyumludur:
+
+```
+sudo dnf module install -y redis:6
+```
+
+Onerilen yapilandirma (`/etc/valkey/valkey.conf` veya `/etc/redis.conf`):
+
+```
+bind 127.0.0.1
+requirepass <parola>
+maxmemory 256mb
+maxmemory-policy volatile-ttl
+save ""
+appendonly no
+```
+
+```
+sudo systemctl enable --now valkey
+```
 
 Durdurmak icin `bin/stop.sh`. Loglar `logs/aft-api.out` altindadir.

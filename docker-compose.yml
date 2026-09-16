@@ -14,18 +14,42 @@ services:
       interval: 5s
       retries: 10
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    command:
+      - valkey-server
+      - --requirepass
+      - aft
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - volatile-ttl
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a aft ping | grep -q PONG"]
+      interval: 5s
+      retries: 10
+
 
   aft-api:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+      valkey:
+        condition: service_healthy
     environment:
       AFT_DB_URL: jdbc:postgresql://postgres:5432/aft
       AFT_DB_USER: aft
       AFT_DB_PASSWORD: aft
-      AFT_STATE_PROVIDER: coherence
-      AFT_COHERENCE_CLIENT: direct
+      AFT_STATE_PROVIDER: valkey
+      AFT_VALKEY_HOST: valkey
+      AFT_VALKEY_PASSWORD: aft
       AFT_CORS_ORIGINS: http://localhost:5173
     ports:
       - "8080:8080"
