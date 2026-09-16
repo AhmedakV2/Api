@@ -1,5 +1,6 @@
 package com.aft.api.user.service;
 
+import java.util.Locale;
 import com.aft.api.common.exception.ConflictException;
 import com.aft.api.common.exception.NotFoundException;
 import com.aft.api.common.exception.ValidationException;
@@ -46,7 +47,7 @@ public class UserService {
     }
     @Transactional
     public UserDto create(CreateUserRequest request) {
-        String email = request.email().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ConflictException("Bu e-posta zaten kayıtlı: " + email);
         }

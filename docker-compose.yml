@@ -20,9 +20,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AFT_DB_URL: jdbc:postgresql://postgres:5432/aft_api
-      AFT_DB_USER: aft_api
-      AFT_DB_PASSWORD: Admin123!
+      AFT_DB_URL: jdbc:postgresql://postgres:5432/aft
+      AFT_DB_USER: aft
+      AFT_DB_PASSWORD: aft
       AFT_CORS_ORIGINS: http://localhost:5173
     ports:
       - "8092:8092"

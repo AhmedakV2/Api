@@ -1,5 +1,6 @@
 package com.aft.api.tenant.service;
 
+import java.util.Locale;
 import com.aft.api.common.audit.AuditAction;
 import com.aft.api.common.audit.AuditLogService;
 import com.aft.api.common.exception.ApiException;
@@ -59,7 +60,7 @@ public class InvitationService {
         organizationService.require(orgId);
         Role role = requireRole(request.role());
         String rawToken = TokenHashing.randomSecret();
-        String email = request.email().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
 
         Invitation invitation = invitationRepository.save(new Invitation(orgId, email, role.getId(),
                 TokenHashing.sha256Hex(rawToken), Instant.now().plus(VALID_DAYS, ChronoUnit.DAYS)));

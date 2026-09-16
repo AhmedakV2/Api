@@ -1,5 +1,6 @@
 package com.aft.api.user.service;
 
+import java.util.Locale;
 import com.aft.api.common.exception.ValidationException;
 import com.aft.api.user.entity.PasswordHistory;
 import com.aft.api.user.repository.PasswordHistoryRepository;
@@ -37,7 +38,7 @@ public class PasswordPolicyService {
             throw new ValidationException("Parola büyük harf, küçük harf, rakam ve simge içermelidir.");
         }
         String localPart = email == null ? "" : email.split("@")[0];
-        if (!localPart.isBlank() && rawPassword.toLowerCase().contains(localPart.toLowerCase())) {
+        if (!localPart.isBlank() && rawPassword.toLowerCase(Locale.ROOT).contains(localPart.toLowerCase(Locale.ROOT))) {
             throw new ValidationException("Parola e-posta adresini içermemelidir.");
         }
     }

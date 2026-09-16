@@ -7,9 +7,9 @@ spring:
   profiles:
     default: dev
   datasource:
-    url: ${AFT_DB_URL}
-    username: ${AFT_DB_USER}
-    password: ${AFT_DB_PASSWORD}
+    url: ${AFT_DB_URL:jdbc:postgresql://localhost:5432/aft}
+    username: ${AFT_DB_USER:aft}
+    password: ${AFT_DB_PASSWORD:aft}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -58,7 +58,7 @@ aft:
   cors:
     allowed-origins: ${AFT_CORS_ORIGINS:http://localhost:5173}
   jwt:
-    secret: ${AFT_JWT_SECRET}
+    secret: ${AFT_JWT_SECRET:}
     access-ttl: ${AFT_JWT_ACCESS_TTL:PT15M}
     refresh-ttl: ${AFT_JWT_REFRESH_TTL:P30D}
     issuer: aft-api

@@ -1,5 +1,6 @@
 package com.aft.api.security.service;
 
+import java.util.Locale;
 import com.aft.api.common.audit.AuditAction;
 import com.aft.api.common.audit.AuditLogService;
 import com.aft.api.common.exception.ApiException;
@@ -59,7 +60,7 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest request, String userAgent, String ip) {
-        String email = request.email().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
         if (loginAttemptService.isLocked(email)) {
             auditLog.record(AuditAction.LOGIN_BLOCKED, "UserAccount", email, null, Map.of("ip", safe(ip)));
             throw new ApiException(ErrorCode.ACCOUNT_LOCKED,

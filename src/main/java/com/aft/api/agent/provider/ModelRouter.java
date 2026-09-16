@@ -1,5 +1,6 @@
 package com.aft.api.agent.provider;
 
+import java.util.Locale;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.common.exception.ErrorCode;
 import com.aft.api.config.AiProperties;
@@ -43,7 +44,7 @@ public class ModelRouter {
 
     private ProviderName parse(String raw) {
         try {
-            return ProviderName.valueOf(raw.toUpperCase());
+            return ProviderName.valueOf(raw.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Bilinmeyen saglayici: " + raw);
         }
