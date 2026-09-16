@@ -25,7 +25,7 @@ services:
       AFT_DB_PASSWORD: aft
       AFT_CORS_ORIGINS: http://localhost:5173
     ports:
-      - "8080:8080"
+      - "8092:8092"
 
 volumes:
   pgdata:

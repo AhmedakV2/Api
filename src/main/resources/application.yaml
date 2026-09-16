@@ -46,7 +46,7 @@ spring:
         speech: none
 
 server:
-  port: 8080
+  port: ${AFT_SERVER_PORT:8092}
   error:
     whitelabel:
       enabled: false

@@ -10,5 +10,5 @@ WORKDIR /app
 RUN addgroup -S aft && adduser -S aft -G aft
 COPY --from=build /src/target/*.jar app.jar
 USER aft
-EXPOSE 8080
+EXPOSE 8092
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
