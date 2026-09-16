@@ -2,6 +2,11 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.health.DataRedisHealthContributorAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.health.DataRedisReactiveHealthContributorAutoConfiguration
   application:
     name: aft-api
   profiles:
@@ -56,7 +61,14 @@ server:
       force: true
 aft:
   state:
-    provider: ${AFT_STATE_PROVIDER:coherence}
+    provider: ${AFT_STATE_PROVIDER:valkey}
+    valkey:
+      host: ${AFT_VALKEY_HOST:127.0.0.1}
+      port: ${AFT_VALKEY_PORT:6379}
+      password: ${AFT_VALKEY_PASSWORD:}
+      database: ${AFT_VALKEY_DB:0}
+      key-prefix: ${AFT_VALKEY_PREFIX:aft:}
+      tool-result-channel: ${AFT_VALKEY_TOOL_CHANNEL:aft:tool:result}
     coherence:
       cache-prefix: ${AFT_COHERENCE_CACHE_PREFIX:aft-}
       topic-name: ${AFT_COHERENCE_TOPIC:aft-tool-result}
