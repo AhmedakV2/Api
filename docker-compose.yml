@@ -2,15 +2,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: aft
-      POSTGRES_USER: aft
-      POSTGRES_PASSWORD: aft
+      POSTGRES_DB: aft_api
+      POSTGRES_USER: aft_api
+      POSTGRES_PASSWORD: Akg1312!
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aft"]
+      test: ["CMD-SHELL", "pg_isready -U aft_api -d aft_api"]
       interval: 5s
       retries: 10
 
@@ -20,9 +20,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AFT_DB_URL: jdbc:postgresql://postgres:5432/aft
-      AFT_DB_USER: aft
-      AFT_DB_PASSWORD: aft
+      AFT_DB_URL: jdbc:postgresql://postgres:5432/aft_api
+      AFT_DB_USER: aft_api
+      AFT_DB_PASSWORD: Akg1312!
       AFT_CORS_ORIGINS: http://localhost:5173
     ports:
       - "8092:8092"
