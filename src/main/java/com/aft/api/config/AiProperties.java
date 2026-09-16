@@ -1,5 +1,6 @@
 package com.aft.api.config;
 
+import java.util.Locale;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -13,7 +14,7 @@ public record AiProperties(String provider,
                            int maxToolHops,
                            int maxToolResultBytes) {
     public AiProperties {
-        provider = (provider == null || provider.isBlank()) ? "ollama" : provider.toLowerCase();
+        provider = (provider == null || provider.isBlank()) ? "ollama" : provider.toLowerCase(Locale.ROOT);
         models = models == null ? new Models(null, null, null) : models;
         requestTimeout = requestTimeout == null ? Duration.ofSeconds(120) : requestTimeout;
         maxWindowMessages = maxWindowMessages <= 0 ? 40 : maxWindowMessages;
