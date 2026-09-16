@@ -16,10 +16,6 @@ public abstract class TestcontainersConfig {
             .withPassword("aft");
 
     static {
-        System.setProperty("coherence.ttl", "0");
-        System.setProperty("coherence.wka", "127.0.0.1");
-        System.setProperty("coherence.localhost", "127.0.0.1");
-        System.setProperty("coherence.log.level", "1");
         POSTGRES.start();
     }
 
@@ -28,7 +24,5 @@ public abstract class TestcontainersConfig {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("aft.state.provider", () -> "coherence");
-        registry.add("aft.state.coherence.client", () -> "direct");
     }
 }
