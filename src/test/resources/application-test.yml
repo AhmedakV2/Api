@@ -6,10 +6,6 @@ spring:
     enabled: true
 
 aft:
-  state:
-    provider: coherence
-    coherence:
-      client: direct
   cors:
     allowed-origins: http://localhost
   jwt:

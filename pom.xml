@@ -34,7 +34,6 @@
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <jjwt.version>0.13.0</jjwt.version>
         <hypersistence-utils.version>3.15.5</hypersistence-utils.version>
-        <coherence.version>25.03.1</coherence.version>
         <excluded.test.groups>integration</excluded.test.groups>
     </properties>
 	<dependencies>
@@ -45,10 +44,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -213,11 +208,6 @@
             <groupId>io.hypersistence</groupId>
             <artifactId>hypersistence-utils-hibernate-73</artifactId>
             <version>${hypersistence-utils.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.oracle.coherence.ce</groupId>
-            <artifactId>coherence</artifactId>
-            <version>${coherence.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>

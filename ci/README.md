@@ -93,6 +93,31 @@ bin/start.sh
 
 `AFT_JWT_SECRET` en az 32 karakter olmalidir, aksi halde uygulama acilista durur.
 
+## Durum yonetimi
+
+Oturum kilidi, hiz siniri, WebSocket bileti, cihaz kaydi ve arac sonucu dagitimi
+uygulama surecinin kendi belleginde tutulur. Harici bir sunucu gerekmez.
+
+Tum kayitlar yasam suresi (TTL) tasir ve suresi dolanlar arka planda temizlenir.
+Uygulama yeniden baslatildiginda bu kayitlar silinir; en belirgin etkisi aktif
+hesap kilitlerinin ve hiz siniri sayaclarinin sifirlanmasidir.
+
+Bu tasarim tek uygulama ornegi icindir. Birden fazla ornek calistirilacagi zaman
+KeyValueStore, CounterStore ve ToolResultBus arayuzlerine paylasimli bir
+saglayici eklenmesi gerekir; tuketici siniflar degismez.
+
+## Sunucuda calistirma
+
+```
+svn checkout <SVN_BASE_URL>/current /opt/aft-api
+cd /opt/aft-api
+cp config/aft.env.example config/aft.env
+# config/aft.env icindeki AFT_JWT_SECRET, AFT_DB_* ve AFT_REDIS_* degerlerini doldurun
+bin/start.sh
+```
+
+`AFT_JWT_SECRET` en az 32 karakter olmalidir, aksi halde uygulama acilista durur.
+
 ## Dagitik durum deposu
 
 Uygulama oturum kilidi, hiz siniri, WebSocket bileti, cihaz kaydi ve araclar arasi
