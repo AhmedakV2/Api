@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.Disposable;
@@ -39,6 +40,19 @@ public class SseEmitterRegistry {
             emitter.completeWithError(e);
         }
         return emitter;
+    }
+
+    @Scheduled(fixedDelay = 15_000)
+    void keepAlive() {
+        channels.forEach((sessionId, entry) -> {
+            try {
+                entry.emitter.send(SseEmitter.event().comment("ping"));
+            } catch (IOException | IllegalStateException e) {
+                log.debug("SSE canli tutma basarisiz sessionId={}", sessionId);
+                entry.cancel();
+                channels.remove(sessionId, entry);
+            }
+        });
     }
 
     public boolean isOpen(UUID sessionId) {
