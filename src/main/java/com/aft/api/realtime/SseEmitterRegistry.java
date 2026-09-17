@@ -33,11 +33,8 @@ public class SseEmitterRegistry {
             channels.remove(sessionId, entry);
         });
 
-        try {
-            emitter.send(SseEmitter.event().name("open").data(sessionId.toString()));
-        } catch (IOException | IllegalStateException e) {
-            channels.remove(sessionId, entry);
-            emitter.completeWithError(e);
+        if (!entry.write(SseEmitter.event().name("open").data(sessionId.toString()))) {
+            drop(sessionId, entry);
         }
         return emitter;
     }
@@ -45,13 +42,11 @@ public class SseEmitterRegistry {
     @Scheduled(fixedDelay = 15_000)
     void keepAlive() {
         channels.forEach((sessionId, entry) -> {
-            try {
-                entry.emitter.send(SseEmitter.event().comment("ping"));
-            } catch (IOException | IllegalStateException e) {
-                log.debug("SSE canli tutma basarisiz sessionId={}", sessionId);
-                entry.cancel();
-                channels.remove(sessionId, entry);
+            if (entry.write(SseEmitter.event().comment("ping"))) {
+                return;
             }
+            log.debug("SSE canli tutma basarisiz sessionId={}", sessionId);
+            drop(sessionId, entry);
         });
     }
 
@@ -71,27 +66,28 @@ public class SseEmitterRegistry {
         if (entry == null) {
             return;
         }
-        try {
-            entry.emitter.send(SseEmitter.event().name(event).data(payload));
-        } catch (IOException | IllegalStateException e) {
-            log.debug("SSE gonderimi basarisiz sessionId={}", sessionId);
-            entry.cancel();
-            channels.remove(sessionId, entry);
+        if (entry.write(SseEmitter.event().name(event).data(payload))) {
+            return;
         }
+        log.debug("SSE gonderimi basarisiz sessionId={}", sessionId);
+        drop(sessionId, entry);
     }
 
     public void complete(UUID sessionId) {
         Entry entry = channels.remove(sessionId);
         if (entry != null) {
-            entry.emitter.complete();
+            entry.finish();
         }
     }
 
-    public void completeWithError(UUID sessionId, Throwable error) {
+    public void fail(UUID sessionId, String message) {
         Entry entry = channels.remove(sessionId);
-        if (entry != null) {
-            entry.emitter.completeWithError(error);
+        if (entry == null) {
+            return;
         }
+        entry.cancel();
+        entry.write(SseEmitter.event().name("error").data(message));
+        entry.finish();
     }
 
     public boolean cancel(UUID sessionId) {
@@ -100,24 +96,57 @@ public class SseEmitterRegistry {
             return false;
         }
         entry.cancel();
-        entry.emitter.complete();
+        entry.finish();
         return true;
+    }
+
+    private void drop(UUID sessionId, Entry entry) {
+        channels.remove(sessionId, entry);
+        entry.cancel();
+        entry.finish();
     }
 
     private void close(UUID sessionId) {
         Entry previous = channels.remove(sessionId);
         if (previous != null) {
             previous.cancel();
-            previous.emitter.complete();
+            previous.finish();
         }
     }
 
     private static final class Entry {
         private final SseEmitter emitter;
+        private final Object lock = new Object();
         private volatile Disposable subscription;
+        private boolean closed;
 
         private Entry(SseEmitter emitter) {
             this.emitter = emitter;
+        }
+
+        private boolean write(SseEmitter.SseEventBuilder event) {
+            synchronized (lock) {
+                if (closed) {
+                    return false;
+                }
+                try {
+                    emitter.send(event);
+                    return true;
+                } catch (IOException | IllegalStateException e) {
+                    closed = true;
+                    return false;
+                }
+            }
+        }
+
+        private void finish() {
+            synchronized (lock) {
+                if (closed) {
+                    return;
+                }
+                closed = true;
+                emitter.complete();
+            }
         }
 
         private void cancel() {

@@ -105,8 +105,7 @@ public class AgentBrainService {
                 })
                 .doOnError(error -> {
                     log.error("Model akisi basarisiz sessionId={}", sessionId, error);
-                    emitters.completeWithError(sessionId,
-                            new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Model saglayici yanit vermedi"));
+                    emitters.fail(sessionId, "Model saglayici yanit vermedi: " + rootMessage(error));
                 })
                 .doOnComplete(() -> {
                     String text = buffer.toString();
@@ -146,6 +145,15 @@ public class AgentBrainService {
         if (out > 0) {
             tokenOut.set(out);
         }
+    }
+
+    private String rootMessage(Throwable error) {
+        Throwable cursor = error;
+        while (cursor.getCause() != null && cursor.getCause() != cursor) {
+            cursor = cursor.getCause();
+        }
+        String message = cursor.getMessage();
+        return (message == null || message.isBlank()) ? cursor.getClass().getSimpleName() : message;
     }
 
     private String textOf(ChatResponse response) {
