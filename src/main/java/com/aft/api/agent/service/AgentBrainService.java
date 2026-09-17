@@ -105,7 +105,6 @@ public class AgentBrainService {
                 })
                 .doOnError(error -> {
                     log.error("Model akisi basarisiz sessionId={}", sessionId, error);
-                    sessionManager.markFailed(sessionId);
                     emitters.completeWithError(sessionId,
                             new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Model saglayici yanit vermedi"));
                 })
@@ -134,7 +133,6 @@ public class AgentBrainService {
             return modelRouter.provider().call(prompt, options(session, toolContext));
         } catch (RuntimeException e) {
             log.error("Model cagrisi basarisiz sessionId={}", session.getId(), e);
-            sessionManager.markFailed(session.getId());
             throw new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Model saglayici yanit vermedi");
         }
     }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -116,7 +117,7 @@ class AgentBrainServiceTest {
         assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "soru"))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("Model saglayici yanit vermedi");
-        verify(sessionManager).markFailed(SESSION_ID);
+        verify(sessionManager, never()).markFailed(SESSION_ID);
     }
 
     @Test
