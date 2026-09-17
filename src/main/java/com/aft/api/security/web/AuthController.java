@@ -1,11 +1,7 @@
 package com.aft.api.security.web;
 
 import com.aft.api.security.AftPrincipal;
-import com.aft.api.security.dto.LoginRequest;
-import com.aft.api.security.dto.MeResponse;
-import com.aft.api.security.dto.RefreshRequest;
-import com.aft.api.security.dto.TokenResponse;
-import com.aft.api.security.dto.WsTicketResponse;
+import com.aft.api.security.dto.*;
 import com.aft.api.security.service.AuthService;
 import com.aft.api.security.service.WsTicketService;
 import com.aft.api.user.dto.ChangePasswordRequest;
@@ -43,6 +39,13 @@ public class AuthController {
     @Operation(summary = "E-posta ve parola ile jeton alma")
     public TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
         return authService.login(request, userAgent(servletRequest), clientIp(servletRequest));
+    }
+
+    @PostMapping("/register")
+    @SecurityRequirements
+    @Operation(summary = "Yeni hesap olusturma ve jeton alma")
+    public TokenResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest servletRequest) {
+        return authService.register(request, userAgent(servletRequest), clientIp(servletRequest));
     }
 
     @PostMapping("/refresh")
