@@ -64,6 +64,10 @@ public class ClientDevice {
         this.appVersion = appVersion;
     }
 
+    public void attachApiKey(UUID newApiKeyId) {
+        this.apiKeyId = newApiKeyId;
+    }
+
     public void markSeen(Instant when) {
         this.lastSeenAt = when;
         if (status != DeviceStatus.BLOCKED) {

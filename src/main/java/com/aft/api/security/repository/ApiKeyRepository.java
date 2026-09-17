@@ -15,6 +15,8 @@ public interface ApiKeyRepository extends JpaRepository<ApiKey, UUID> {
 
     List<ApiKey> findByOrgIdOrderByCreatedAtDesc(UUID orgId);
 
+    List<ApiKey> findByOrgIdAndOwnerIdAndNameAndRevokedAtIsNull(UUID orgId, UUID ownerId, String name);
+
     @Modifying
     @Query("UPDATE ApiKey k SET k.lastUsedAt = :now WHERE k.id = :id")
     void touch(@Param("id") UUID id, @Param("now") Instant now);

@@ -14,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 public interface ClientDeviceRepository extends JpaRepository<ClientDevice, UUID> {
     Optional<ClientDevice> findByApiKeyId(UUID apiKeyId);
 
+    Optional<ClientDevice> findFirstByOrgIdAndUserIdAndHostnameOrderByCreatedAtAsc(UUID orgId, UUID userId,
+                                                                                  String hostname);
+
     List<ClientDevice> findByOrgIdOrderByLastSeenAtDesc(UUID orgId);
 
     @Modifying

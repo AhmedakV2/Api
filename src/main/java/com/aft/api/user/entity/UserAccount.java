@@ -27,6 +27,9 @@ public class UserAccount extends AuditableEntity {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
+    @Column(name = "username", nullable = false, unique = true, columnDefinition = "citext")
+    private String username;
+
     @Column(name = "email", nullable = false, unique = true, columnDefinition = "citext")
     private String email;
 
@@ -58,7 +61,8 @@ public class UserAccount extends AuditableEntity {
     protected UserAccount() {
     }
 
-    public UserAccount(String email, String passwordHash, String displayName, String locale) {
+    public UserAccount(String username, String email, String passwordHash, String displayName, String locale) {
+        this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.displayName = displayName;
@@ -102,6 +106,10 @@ public class UserAccount extends AuditableEntity {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getUsername() {
+        return username;
     }
 
     public String getEmail() {

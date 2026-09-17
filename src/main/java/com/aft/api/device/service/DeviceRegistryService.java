@@ -56,6 +56,23 @@ public class DeviceRegistryService {
     }
 
     @Transactional
+    public DeviceDto bind(UUID orgId, UUID userId, UUID apiKeyId, DeviceRegisterRequest request) {
+        ClientDevice device = deviceRepository
+                .findFirstByOrgIdAndUserIdAndHostnameOrderByCreatedAtAsc(orgId, userId, request.hostname())
+                .map(existing -> {
+                    existing.refresh(request.hostname(), request.os(), request.appVersion());
+                    existing.attachApiKey(apiKeyId);
+                    return existing;
+                })
+                .orElseGet(() -> deviceRepository.save(new ClientDevice(orgId, userId, request.hostname(),
+                        request.os(), request.appVersion(), apiKeyId)));
+
+        device.markSeen(Instant.now());
+        log.info("Istemci baglandi id={} org={}", device.getId(), orgId);
+        return toDto(device);
+    }
+
+    @Transactional
     public DeviceDto replaceCapabilities(UUID deviceId, ApiKeyPrincipal apiKey, CapabilityBulkRequest request) {
         ClientDevice device = requireOwnDevice(deviceId, apiKey);
 

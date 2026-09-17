@@ -47,14 +47,19 @@ public class UserService {
     }
     @Transactional
     public UserDto create(CreateUserRequest request) {
+        String username = request.username().trim().toLowerCase(Locale.ROOT);
         String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new ConflictException("Bu kullanıcı adı zaten kayıtlı: " + username);
+        }
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ConflictException("Bu e-posta zaten kayıtlı: " + email);
         }
-        passwordPolicy.validateFormat(request.password(),email);
+        passwordPolicy.validateFormat(request.password(), username, email);
 
         String hash = passwordEncoder.encode(request.password());
-        UserAccount user = new UserAccount(email, hash, request.displayName().trim(), request.localeOrDefault());
+        UserAccount user = new UserAccount(username, email, hash, request.displayName().trim(),
+                request.localeOrDefault());
         request.roles().forEach(code -> user.grant(requireRole(code)));
         UserAccount saved = userRepository.save(user);
         passwordPolicy.remember(saved.getId(), hash);
@@ -119,7 +124,7 @@ public class UserService {
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new ValidationException("Mevcut parola doğrulanamadı");
         }
-        passwordPolicy.validateChange(id, newPassword, user.getEmail());
+        passwordPolicy.validateChange(id, newPassword, user.getUsername(), user.getEmail());
 
         String hash = passwordEncoder.encode(newPassword);
         user.changePasswordHash(hash);

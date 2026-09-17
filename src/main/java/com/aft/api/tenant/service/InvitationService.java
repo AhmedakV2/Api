@@ -91,11 +91,11 @@ public class InvitationService {
     }
 
     private UUID createAccount(Invitation invitation, AcceptInvitationRequest request) {
-        if (request.password() == null || request.displayName() == null) {
-            throw new ValidationException("Yeni hesap icin gorunen ad ve parola zorunludur");
+        if (request.password() == null || request.displayName() == null || request.username() == null) {
+            throw new ValidationException("Yeni hesap icin kullanici adi, gorunen ad ve parola zorunludur");
         }
-        return userService.create(new CreateUserRequest(invitation.getEmail(), request.password(),
-                request.displayName(), "tr", Set.of(RoleCode.USER))).id();
+        return userService.create(new CreateUserRequest(request.username(), invitation.getEmail(),
+                request.password(), request.displayName(), "tr", Set.of(RoleCode.USER))).id();
     }
 
     private Role requireRole(RoleCode code) {

@@ -36,7 +36,7 @@ public class AuthController {
 
     @PostMapping("/login")
     @SecurityRequirements
-    @Operation(summary = "E-posta ve parola ile jeton alma")
+    @Operation(summary = "Kullanici adi ve parola ile jeton alma")
     public TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
         return authService.login(request, userAgent(servletRequest), clientIp(servletRequest));
     }

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtTokenProvider {
     private static final String CLAIM_ROLES = "roles";
+    private static final String CLAIM_USERNAME = "username";
     private static final String CLAIM_EMAIL = "email";
     private static final String CLAIM_ORGS = "orgs";
 
@@ -36,6 +37,7 @@ public class JwtTokenProvider {
                 .id(UUID.randomUUID().toString())
                 .issuer(properties.issuer())
                 .subject(principal.userId().toString())
+                .claim(CLAIM_USERNAME, principal.username())
                 .claim(CLAIM_EMAIL, principal.email())
                 .claim(CLAIM_ROLES, roles)
                 .claim(CLAIM_ORGS, principal.orgIds().stream().map(UUID::toString).toList())

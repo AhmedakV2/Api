@@ -30,7 +30,8 @@ class ApiKeyServiceTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void hazirla() {
-        ownerId = userService.create(new CreateUserRequest("anahtar-" + UUID.randomUUID() + "@aft.local",
+        String username = "anahtar" + UUID.randomUUID().toString().replace("-", "");
+        ownerId = userService.create(new CreateUserRequest(username, username + "@aft.local",
                 "Kalkan-2026-Gizli!", "Anahtar Sahibi", "tr", Set.of(RoleCode.ADMIN))).id();
         orgId = organizationService.create(
                 new CreateOrganizationRequest("Test Birimi " + UUID.randomUUID()), ownerId).id();

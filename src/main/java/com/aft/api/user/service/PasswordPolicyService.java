@@ -30,22 +30,25 @@ public class PasswordPolicyService {
         this.historyRepository = historyRepository;
         this.passwordEncoder = passwordEncoder;
     }
-    public void validateFormat(String rawPassword, String email) {
+    public void validateFormat(String rawPassword, String... identifiers) {
         if (rawPassword == null || rawPassword.length() < MIN_LENGTH) {
             throw new ValidationException("Parola en az " + MIN_LENGTH + " karakter olmalıdır.");
         }
         if (!UPPER.matcher(rawPassword).find() || !LOWER.matcher(rawPassword).find() || !DIGIT.matcher(rawPassword).find() || !SYMBOL.matcher(rawPassword).find()) {
             throw new ValidationException("Parola büyük harf, küçük harf, rakam ve simge içermelidir.");
         }
-        String localPart = email == null ? "" : email.split("@")[0];
-        if (!localPart.isBlank() && rawPassword.toLowerCase(Locale.ROOT).contains(localPart.toLowerCase(Locale.ROOT))) {
-            throw new ValidationException("Parola e-posta adresini içermemelidir.");
+        String lowered = rawPassword.toLowerCase(Locale.ROOT);
+        for (String identifier : identifiers) {
+            String localPart = identifier == null ? "" : identifier.split("@")[0];
+            if (!localPart.isBlank() && lowered.contains(localPart.toLowerCase(Locale.ROOT))) {
+                throw new ValidationException("Parola kullanıcı adını veya e-posta adresini içermemelidir.");
+            }
         }
     }
 
     @Transactional(readOnly = true)
-    public void validateChange(UUID userId, String rawPassword, String email) {
-        validateFormat(rawPassword, email);
+    public void validateChange(UUID userId, String rawPassword, String... identifiers) {
+        validateFormat(rawPassword, identifiers);
         List<PasswordHistory> recent =
                 historyRepository.findByUserIdOrderByCreatedAtDesc(userId, Limit.of(HISTORY_DEPTH));
         boolean reused = recent.stream()

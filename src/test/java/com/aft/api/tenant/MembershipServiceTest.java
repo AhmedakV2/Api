@@ -71,7 +71,8 @@ class MembershipServiceTest extends AbstractIntegrationTest {
     }
 
     private UUID createUser(String prefix) {
-        return userService.create(new CreateUserRequest(prefix + "-" + UUID.randomUUID() + "@aft.local",
+        String username = prefix + UUID.randomUUID().toString().replace("-", "");
+        return userService.create(new CreateUserRequest(username, username + "@aft.local",
                 "Kalkan-2026-Gizli!", prefix, "tr", Set.of(RoleCode.USER))).id();
     }
 }

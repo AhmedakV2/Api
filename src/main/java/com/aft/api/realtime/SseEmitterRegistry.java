@@ -31,6 +31,13 @@ public class SseEmitterRegistry {
             entry.cancel();
             channels.remove(sessionId, entry);
         });
+
+        try {
+            emitter.send(SseEmitter.event().name("open").data(sessionId.toString()));
+        } catch (IOException | IllegalStateException e) {
+            channels.remove(sessionId, entry);
+            emitter.completeWithError(e);
+        }
         return emitter;
     }
 
