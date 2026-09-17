@@ -1,6 +1,7 @@
 package com.aft.api.security;
 
 import com.aft.api.config.SecurityProperties;
+import com.aft.api.config.WebSocketConfig;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,7 +41,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator");
+        return path.startsWith("/actuator") || path.startsWith(WebSocketConfig.ENDPOINT);
     }
 
     @Override
