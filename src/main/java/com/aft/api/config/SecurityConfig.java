@@ -37,6 +37,8 @@ public class SecurityConfig {
             "/api/v1/invitations/accept"
     };
 
+    private static final String HANDSHAKE_PATH = WebSocketConfig.ENDPOINT + "/**";
+
     private final JwtAuthenticationFilter jwtFilter;
     private final ApiKeyAuthenticationFilter apiKeyFilter;
     private final RateLimitFilter rateLimitFilter;
@@ -66,6 +68,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers(WebSocketConfig.ENDPOINT, HANDSHAKE_PATH).permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
