@@ -39,11 +39,18 @@ spring:
   ai:
     model:
       chat: ${AFT_AI_PROVIDER:ollama}
-      embedding: ${AFT_AI_PROVIDER:ollama}
+      embedding: ${AFT_AI_EMBEDDING_PROVIDER:ollama}
       image: none
       moderation: none
       audio:
         speech: none
+    openai:
+      base-url: ${FOALLM_BASE_URL:}
+      api-key: ${FOALLM_API_KEY:}
+      chat:
+        options:
+          model: ${FOALLM_MODEL:}
+          temperature: ${FOALLM_TEMPERATURE:0.2}
 
 server:
   port: ${AFT_SERVER_PORT:8092}
@@ -99,8 +106,10 @@ management:
 
 springdoc:
   api-docs:
+    enabled: ${AFT_DOCS_ENABLED:true}
     path: /v3/api-docs
   swagger-ui:
+    enabled: ${AFT_DOCS_ENABLED:true}
     path: /swagger-ui.html
 
 logging:

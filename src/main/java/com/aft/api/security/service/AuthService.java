@@ -13,6 +13,9 @@ import com.aft.api.security.dto.LoginRequest;
 import com.aft.api.security.dto.MeResponse;
 import com.aft.api.security.dto.RegisterRequest;
 import com.aft.api.security.dto.TokenResponse;
+import com.aft.api.common.util.Slugs;
+import com.aft.api.tenant.dto.CreateOrganizationRequest;
+import com.aft.api.tenant.repository.OrganizationRepository;
 import com.aft.api.tenant.service.OrganizationService;
 import com.aft.api.user.entity.Role;
 import com.aft.api.user.entity.RoleCode;
@@ -43,6 +46,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
     private final OrganizationService organizationService;
+    private final OrganizationRepository organizationRepository;
     private final AuditLogService auditLog;
 
     public AuthService(AftUserDetailsService userDetailsService,
@@ -53,6 +57,7 @@ public class AuthService {
                        RefreshTokenService refreshTokenService,
                        LoginAttemptService loginAttemptService,
                        OrganizationService organizationService,
+                       OrganizationRepository organizationRepository,
                        AuditLogService auditLog) {
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
@@ -62,6 +67,7 @@ public class AuthService {
         this.refreshTokenService = refreshTokenService;
         this.loginAttemptService = loginAttemptService;
         this.organizationService = organizationService;
+        this.organizationRepository = organizationRepository;
         this.auditLog = auditLog;
     }
 
@@ -119,6 +125,8 @@ public class AuthService {
         user.grant(role);
         userRepository.save(user);
 
+        createWorkspace(user);
+
         auditLog.record(AuditAction.USER_CREATED, "UserAccount", user.getId().toString(),
                 user.getId(), Map.of("ip", safe(ip)));
         log.info("Kayit basarili userId={}", user.getId());
@@ -152,6 +160,29 @@ public class AuthService {
                 user.isMfaEnabled(),
                 user.getRoles().stream().map(role -> role.getCode().name()).collect(Collectors.toSet()),
                 organizationService.findByMember(userId));
+    }
+
+    private void createWorkspace(UserAccount user) {
+        String base = user.getDisplayName().isBlank() ? user.getEmail() : user.getDisplayName();
+        organizationService.create(new CreateOrganizationRequest(freeName(trim(base))), user.getId());
+    }
+
+    private String freeName(String base) {
+        if (!organizationRepository.existsBySlug(Slugs.toSlug(base))) {
+            return base;
+        }
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String candidate = base + " " + UUID.randomUUID().toString().substring(0, 6);
+            if (!organizationRepository.existsBySlug(Slugs.toSlug(candidate))) {
+                return candidate;
+            }
+        }
+        throw new ApiException(ErrorCode.CONFLICT, "Calisma alani adi uretilemedi");
+    }
+
+    private String trim(String value) {
+        String cleaned = value.trim();
+        return cleaned.length() > 140 ? cleaned.substring(0, 140) : cleaned;
     }
 
     private String safe(String ip) {
