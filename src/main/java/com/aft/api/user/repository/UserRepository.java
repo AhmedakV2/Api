@@ -19,13 +19,19 @@ public interface UserRepository extends JpaRepository<UserAccount, UUID> {
     @EntityGraph(attributePaths = "roles")
     Optional<UserAccount> findWithRolesByEmailIgnoreCase(String email);
 
+    @EntityGraph(attributePaths = "roles")
+    Optional<UserAccount> findWithRolesByUsernameIgnoreCase(String username);
+
     boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByUsernameIgnoreCase(String username);
 
     @EntityGraph(attributePaths = "roles")
     @Query("""
             SELECT u FROM UserAccount u
             WHERE (:status IS NULL OR u.status = :status)
-              AND (:q IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))
+              AND (:q IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%'))
+                              OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))
                               OR LOWER(u.displayName) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
     Page<UserAccount> search(@Param("q") String q, @Param("status") UserStatus status, Pageable pageable);

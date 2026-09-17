@@ -57,7 +57,7 @@ class UserServiceTest {
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$12$ozet");
         when(userMapper.toDto(any(UserAccount.class))).thenAnswer(invocation -> {
             UserAccount user = invocation.getArgument(0);
-            return new UserDto(user.getId(), user.getEmail(), user.getDisplayName(),
+            return new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getDisplayName(),
                     user.getStatus().name(), user.getLocale(), user.isMfaEnabled(), Set.of(), null, null);
         });
     }
@@ -65,7 +65,7 @@ class UserServiceTest {
     @Test
     void tekrarliEpostaCakismaHatasiVerir() {
         when(userRepository.existsByEmailIgnoreCase("ahmet@aft.local")).thenReturn(true);
-        CreateUserRequest request = new CreateUserRequest("ahmet@aft.local", "Kalkan-2026-Gizli!",
+        CreateUserRequest request = new CreateUserRequest("ahmet", "ahmet@aft.local", "Kalkan-2026-Gizli!",
                 "Ahmet", "tr", Set.of(RoleCode.USER));
 
         assertThatThrownBy(() -> userService.create(request)).isInstanceOf(ConflictException.class);
@@ -82,7 +82,7 @@ class UserServiceTest {
 
     @Test
     void guncellemeYalnizcaGonderilenAlanlariUygular() {
-        UserAccount user = new UserAccount("ahmet@aft.local", "$2a$12$ozet", "Ahmet", "tr");
+        UserAccount user = new UserAccount("ahmet", "ahmet@aft.local", "$2a$12$ozet", "Ahmet", "tr");
         when(userRepository.findWithRolesById(any())).thenReturn(Optional.of(user));
 
         userService.update(UUID.randomUUID(), new UpdateUserRequest("Ahmet Akin", null, null, null));
@@ -94,7 +94,7 @@ class UserServiceTest {
 
     @Test
     void pasiflestirmeKaydiSilmezDurumuDegistirir() {
-        UserAccount user = new UserAccount("ahmet@aft.local", "$2a$12$ozet", "Ahmet", "tr");
+        UserAccount user = new UserAccount("ahmet", "ahmet@aft.local", "$2a$12$ozet", "Ahmet", "tr");
         when(userRepository.findWithRolesById(any())).thenReturn(Optional.of(user));
 
         userService.disable(UUID.randomUUID());
@@ -105,7 +105,7 @@ class UserServiceTest {
 
     @Test
     void hataliMevcutParolaDegisikligiEngeller() {
-        UserAccount user = new UserAccount("ahmet@aft.local", "$2a$12$ozet", "Ahmet", "tr");
+        UserAccount user = new UserAccount("ahmet", "ahmet@aft.local", "$2a$12$ozet", "Ahmet", "tr");
         when(userRepository.findWithRolesById(any())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("yanlis", "$2a$12$ozet")).thenReturn(false);
 

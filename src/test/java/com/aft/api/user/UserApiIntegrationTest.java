@@ -20,8 +20,8 @@ class UserApiIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void kullaniciOlusturulurVeAramadaGorunur() {
-        CreateUserRequest request = new CreateUserRequest("entegrasyon@aft.local", "Kalkan-2026-Gizli!",
-                "Entegrasyon Kullanicisi", "tr", Set.of(RoleCode.USER));
+        CreateUserRequest request = new CreateUserRequest("entegrasyon", "entegrasyon@aft.local",
+                "Kalkan-2026-Gizli!", "Entegrasyon Kullanicisi", "tr", Set.of(RoleCode.USER));
 
         UserDto created = userService.create(request);
 

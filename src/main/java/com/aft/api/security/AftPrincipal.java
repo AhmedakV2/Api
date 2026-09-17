@@ -11,6 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 public record AftPrincipal(UUID userId,
+                           String username,
                            String email,
                            String passwordHash,
                            UserStatus status,
@@ -20,7 +21,7 @@ public record AftPrincipal(UUID userId,
         List<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role.getCode().name()))
                 .toList();
-        return new AftPrincipal(user.getId(), user.getEmail(), user.getPasswordHash(),
+        return new AftPrincipal(user.getId(), user.getUsername(), user.getEmail(), user.getPasswordHash(),
                 user.getStatus(), orgIds, authorities);
     }
 

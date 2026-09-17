@@ -59,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 : orgs.stream().map(UUID::fromString).collect(Collectors.toUnmodifiableSet());
 
         AftPrincipal principal = new AftPrincipal(UUID.fromString(claims.getSubject()),
-                claims.get("email", String.class), null,
+                claims.get("username", String.class), claims.get("email", String.class), null,
                 com.aft.api.user.entity.UserStatus.ACTIVE, orgIds, authorities);
 
         var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);

@@ -21,7 +21,8 @@ class JwtTokenProviderTest {
 
     private AftPrincipal principal(UUID userId, UUID orgId) {
         List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
-        return new AftPrincipal(userId, "ahmet@aft.local", null, UserStatus.ACTIVE, Set.of(orgId), authorities);
+        return new AftPrincipal(userId, "ahmet", "ahmet@aft.local", null, UserStatus.ACTIVE,
+                Set.of(orgId), authorities);
     }
 
     @Test
@@ -33,6 +34,7 @@ class JwtTokenProviderTest {
 
         assertThat(claims).isNotNull();
         assertThat(claims.getSubject()).isEqualTo(userId.toString());
+        assertThat(claims.get("username", String.class)).isEqualTo("ahmet");
         assertThat(claims.get("email", String.class)).isEqualTo("ahmet@aft.local");
         assertThat(claims.get("roles", List.class)).containsExactly("ROLE_ADMIN");
         assertThat(claims.get("orgs", List.class)).containsExactly(orgId.toString());

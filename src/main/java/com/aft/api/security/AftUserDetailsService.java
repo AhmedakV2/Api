@@ -22,8 +22,8 @@ public class AftUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public AftPrincipal loadUserByUsername(String email) {
-        UserAccount user = userRepository.findWithRolesByEmailIgnoreCase(email)
+    public AftPrincipal loadUserByUsername(String username) {
+        UserAccount user = userRepository.findWithRolesByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Kullanici bulunamadi"));
         return toPrincipal(user);
     }

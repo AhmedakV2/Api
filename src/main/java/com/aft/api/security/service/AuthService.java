@@ -73,32 +73,33 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest request, String userAgent, String ip) {
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
-        if (loginAttemptService.isLocked(email)) {
-            auditLog.record(AuditAction.LOGIN_BLOCKED, "UserAccount", email, null, Map.of("ip", safe(ip)));
+        String username = request.username().trim().toLowerCase(Locale.ROOT);
+        if (loginAttemptService.isLocked(username)) {
+            auditLog.record(AuditAction.LOGIN_BLOCKED, "UserAccount", username, null, Map.of("ip", safe(ip)));
             throw new ApiException(ErrorCode.ACCOUNT_LOCKED,
-                    "Hesap kilitli, kalan sure: " + loginAttemptService.remainingLock(email).toMinutes() + " dakika");
+                    "Hesap kilitli, kalan sure: "
+                            + loginAttemptService.remainingLock(username).toMinutes() + " dakika");
         }
 
         AftPrincipal principal;
         try {
-            principal = userDetailsService.loadUserByUsername(email);
+            principal = userDetailsService.loadUserByUsername(username);
         } catch (UsernameNotFoundException e) {
-            loginAttemptService.recordFailure(email);
-            throw new ApiException(ErrorCode.UNAUTHENTICATED, "E-posta veya parola hatali");
+            loginAttemptService.recordFailure(username);
+            throw new ApiException(ErrorCode.UNAUTHENTICATED, "Kullanici adi veya parola hatali");
         }
 
         if (!passwordEncoder.matches(request.password(), principal.passwordHash())) {
-            loginAttemptService.recordFailure(email);
+            loginAttemptService.recordFailure(username);
             auditLog.record(AuditAction.LOGIN_FAILED, "UserAccount", principal.userId().toString(),
                     principal.userId(), Map.of("ip", safe(ip)));
-            throw new ApiException(ErrorCode.UNAUTHENTICATED, "E-posta veya parola hatali");
+            throw new ApiException(ErrorCode.UNAUTHENTICATED, "Kullanici adi veya parola hatali");
         }
         if (principal.status() != UserStatus.ACTIVE) {
             throw new ApiException(ErrorCode.FORBIDDEN, "Hesap etkin degil");
         }
 
-        loginAttemptService.reset(email);
+        loginAttemptService.reset(username);
         userRepository.findById(principal.userId()).ifPresent(user -> user.markLogin(Instant.now()));
 
         String refreshToken = refreshTokenService.issue(principal.userId(), userAgent, ip);
@@ -112,7 +113,11 @@ public class AuthService {
 
     @Transactional
     public TokenResponse register(RegisterRequest request, String userAgent, String ip) {
+        String username = request.username().trim().toLowerCase(Locale.ROOT);
         String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new ApiException(ErrorCode.CONFLICT, "Bu kullanici adi zaten kayitli");
+        }
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ApiException(ErrorCode.CONFLICT, "Bu e-posta zaten kayitli");
         }
@@ -120,7 +125,7 @@ public class AuthService {
         Role role = roleRepository.findByCode(RoleCode.USER)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "USER rolu tanimli degil"));
 
-        UserAccount user = new UserAccount(email, passwordEncoder.encode(request.password()),
+        UserAccount user = new UserAccount(username, email, passwordEncoder.encode(request.password()),
                 request.displayName().trim(), "tr");
         user.grant(role);
         userRepository.save(user);
@@ -131,7 +136,7 @@ public class AuthService {
                 user.getId(), Map.of("ip", safe(ip)));
         log.info("Kayit basarili userId={}", user.getId());
 
-        return login(new LoginRequest(email, request.password()), userAgent, ip);
+        return login(new LoginRequest(username, request.password()), userAgent, ip);
     }
 
     @Transactional
@@ -156,8 +161,8 @@ public class AuthService {
     public MeResponse me(UUID userId) {
         UserAccount user = userRepository.findWithRolesById(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHENTICATED, "Kullanici bulunamadi"));
-        return new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getLocale(),
-                user.isMfaEnabled(),
+        return new MeResponse(user.getId(), user.getUsername(), user.getEmail(), user.getDisplayName(),
+                user.getLocale(), user.isMfaEnabled(),
                 user.getRoles().stream().map(role -> role.getCode().name()).collect(Collectors.toSet()),
                 organizationService.findByMember(userId));
     }

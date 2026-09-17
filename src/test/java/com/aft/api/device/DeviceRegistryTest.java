@@ -35,7 +35,8 @@ class DeviceRegistryTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void hazirla() {
-        UUID ownerId = userService.create(new CreateUserRequest("cihaz-" + UUID.randomUUID() + "@aft.local",
+        String username = "cihaz" + UUID.randomUUID().toString().replace("-", "");
+        UUID ownerId = userService.create(new CreateUserRequest(username, username + "@aft.local",
                 "Kalkan-2026-Gizli!", "Cihaz Sahibi", "tr", Set.of(RoleCode.ADMIN))).id();
         UUID orgId = organizationService.create(
                 new CreateOrganizationRequest("Cihaz Birimi " + UUID.randomUUID()), ownerId).id();
