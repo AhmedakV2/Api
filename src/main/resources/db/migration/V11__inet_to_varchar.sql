@@ -1,0 +1,3 @@
+ALTER TABLE audit_log ALTER COLUMN ip TYPE VARCHAR(45) USING ip::text;
+ALTER TABLE refresh_token ALTER COLUMN ip TYPE VARCHAR(45) USING ip::text;
+ALTER TABLE login_attempt ALTER COLUMN ip_ TYPE VARCHAR(45) USING ip_::text;

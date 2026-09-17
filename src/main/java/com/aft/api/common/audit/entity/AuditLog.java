@@ -33,7 +33,7 @@ public class AuditLog {
     @Column(name = "entity_id", length = 64, updatable = false)
     private String entityId;
 
-    @Column(name = "ip", columnDefinition = "inet", updatable = false)
+    @Column(name = "ip", length = 45, updatable = false)
     private String ip;
 
     @Type(JsonBinaryType.class)
