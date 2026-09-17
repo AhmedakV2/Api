@@ -11,10 +11,14 @@ import com.aft.api.security.JwtTokenProvider;
 import com.aft.api.security.LoginAttemptService;
 import com.aft.api.security.dto.LoginRequest;
 import com.aft.api.security.dto.MeResponse;
+import com.aft.api.security.dto.RegisterRequest;
 import com.aft.api.security.dto.TokenResponse;
 import com.aft.api.tenant.service.OrganizationService;
+import com.aft.api.user.entity.Role;
+import com.aft.api.user.entity.RoleCode;
 import com.aft.api.user.entity.UserAccount;
 import com.aft.api.user.entity.UserStatus;
+import com.aft.api.user.repository.RoleRepository;
 import com.aft.api.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.Map;
@@ -33,6 +37,7 @@ public class AuthService {
 
     private final AftUserDetailsService userDetailsService;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final RefreshTokenService refreshTokenService;
@@ -42,6 +47,7 @@ public class AuthService {
 
     public AuthService(AftUserDetailsService userDetailsService,
                        UserRepository userRepository,
+                       RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider tokenProvider,
                        RefreshTokenService refreshTokenService,
@@ -50,6 +56,7 @@ public class AuthService {
                        AuditLogService auditLog) {
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.refreshTokenService = refreshTokenService;
@@ -95,6 +102,28 @@ public class AuthService {
 
         return TokenResponse.of(tokenProvider.createAccessToken(principal), refreshToken,
                 tokenProvider.accessTtlSeconds());
+    }
+
+    @Transactional
+    public TokenResponse register(RegisterRequest request, String userAgent, String ip) {
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ApiException(ErrorCode.CONFLICT, "Bu e-posta zaten kayitli");
+        }
+
+        Role role = roleRepository.findByCode(RoleCode.USER)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "USER rolu tanimli degil"));
+
+        UserAccount user = new UserAccount(email, passwordEncoder.encode(request.password()),
+                request.displayName().trim(), "tr");
+        user.grant(role);
+        userRepository.save(user);
+
+        auditLog.record(AuditAction.USER_CREATED, "UserAccount", user.getId().toString(),
+                user.getId(), Map.of("ip", safe(ip)));
+        log.info("Kayit basarili userId={}", user.getId());
+
+        return login(new LoginRequest(email, request.password()), userAgent, ip);
     }
 
     @Transactional
