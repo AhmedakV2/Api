@@ -9,6 +9,7 @@ import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.prompt.SystemPrompts;
 import com.aft.api.agent.provider.ModelProvider;
 import com.aft.api.agent.provider.ModelRouter;
+import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.tool.ToolCallContext;
 import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.common.exception.ApiException;
@@ -184,14 +185,23 @@ public class AgentBrainService {
         return value == null ? 0 : value;
     }
 
-    private ToolCallingChatOptions options(AgentSession session, ToolCallContext toolContext) {
-        List<ToolCallback> callbacks = toolRegistry.callbacksFor(session.getDeviceId());
-        return ToolCallingChatOptions.builder()
-                .model(session.getModel())
-                .toolCallbacks(callbacks)
-                .toolContext(Map.of(ToolCallContext.KEY, toolContext))
-                .build();
-    }
+    private org.springframework.ai.chat.prompt.ChatOptions options(AgentSession session, ToolCallContext toolContext) {
+            ModelProvider provider = modelRouter.provider();
+            List<ToolCallback> callbacks = toolRegistry.callbacksFor(session.getDeviceId());
+
+            if (provider.name() == ProviderName.OPENAI) {
+                // OpenAI implementation expects OpenAiChatOptions specifically
+                return org.springframework.ai.openai.OpenAiChatOptions.builder()
+                        .model(session.getModel())
+                        .build();
+            }
+
+            return ToolCallingChatOptions.builder()
+                    .model(session.getModel())
+                    .toolCallbacks(callbacks)
+                    .toolContext(Map.of(ToolCallContext.KEY, toolContext))
+                    .build();
+        }
 
     public long streamTimeoutMillis() {
         return properties.requestTimeout().toMillis();

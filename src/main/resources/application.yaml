@@ -49,8 +49,8 @@ spring:
       api-key: ${FOALLM_API_KEY:}
       chat:
         options:
-          model: ${FOALLM_MODEL:}
-          temperature: ${FOALLM_TEMPERATURE:0.2}
+          model: ${FOALLM_MODEL:Akgun-Q3.6}
+          temperature: ${FOALLM_TEMPERATURE:0.3}
 
 server:
   port: ${AFT_SERVER_PORT:8092}
@@ -84,7 +84,7 @@ aft:
       planner: ${AFT_AI_MODEL_PLANNER:llama3.1:8b}
       fast: ${AFT_AI_MODEL_FAST:llama3.1:8b}
       embedding: ${AFT_AI_EMBEDDING_MODEL:nomic-embed-text}
-    request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT120S}
+    request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT300S}
     max-window-messages: ${AFT_AI_MAX_WINDOW_MESSAGES:40}
     max-window-tokens: ${AFT_AI_MAX_WINDOW_TOKENS:24000}
     tool-timeout: ${AFT_AI_TOOL_TIMEOUT_MS:PT30S}
