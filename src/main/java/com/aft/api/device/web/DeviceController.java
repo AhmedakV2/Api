@@ -2,8 +2,10 @@ package com.aft.api.device.web;
 
 import com.aft.api.device.dto.CapabilityBulkRequest;
 import com.aft.api.device.dto.DeviceDto;
+import com.aft.api.device.dto.DeviceProvisionDto;
 import com.aft.api.device.dto.DeviceRegisterRequest;
 import com.aft.api.device.service.DevicePresenceService;
+import com.aft.api.device.service.DeviceProvisioningService;
 import com.aft.api.device.service.DeviceRegistryService;
 import com.aft.api.security.AftPrincipal;
 import com.aft.api.security.ApiKeyPrincipal;
@@ -33,10 +35,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceController {
     private final DeviceRegistryService registryService;
     private final DevicePresenceService presenceService;
+    private final DeviceProvisioningService provisioningService;
 
-    public DeviceController(DeviceRegistryService registryService, DevicePresenceService presenceService) {
+    public DeviceController(DeviceRegistryService registryService,
+                            DevicePresenceService presenceService,
+                            DeviceProvisioningService provisioningService) {
         this.registryService = registryService;
         this.presenceService = presenceService;
+        this.provisioningService = provisioningService;
+    }
+
+    @PostMapping("/provision")
+    @PreAuthorize("hasAnyRole('USER','ADMIN','OWNER')")
+    @Operation(summary = "Oturum jetonu ile cihaz anahtari ve kaydi uretme")
+    public DeviceProvisionDto provision(@Valid @RequestBody DeviceRegisterRequest request,
+                                        @AuthenticationPrincipal AftPrincipal principal) {
+        return provisioningService.provision(principal.userId(), request);
     }
 
     @PostMapping("/register")
