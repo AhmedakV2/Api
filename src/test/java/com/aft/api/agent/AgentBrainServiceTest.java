@@ -29,7 +29,7 @@ import com.aft.api.agent.tool.ToolSpec;
 import com.aft.api.agent.tool.spec.LocalScenarioReadSpec;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.config.AiProperties;
-import com.aft.api.realtime.SseEmitterRegistry;
+import com.aft.api.realtime.ChatChannel;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +46,6 @@ import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.test.util.ReflectionTestUtils;
-import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -64,11 +63,13 @@ class AgentBrainServiceTest {
     private ModelUsageService usageService;
     @Mock
     private ToolRegistry toolRegistry;
+    @Mock
+    private ChatChannel chat;
 
     private AiProperties properties;
     private AgentBrainService brainService;
     private AgentSession session;
-    private SseEmitterRegistry emitters;
+
 
     @BeforeEach
     void setUp() {
@@ -77,12 +78,12 @@ class AgentBrainServiceTest {
         session = new AgentSession(ORG_ID, USER_ID, null, "test", SessionMode.CHAT, "buyuk");
         ReflectionTestUtils.setField(session, "id", SESSION_ID);
 
-        emitters = new SseEmitterRegistry(JsonMapper.builder().build());
         brainService = new AgentBrainService(sessionManager, new ConversationWindow(properties),
-                new PromptLibrary(), modelRouter, usageService, emitters, toolRegistry, new IntentRouter(),
+                new PromptLibrary(), modelRouter, usageService, chat, toolRegistry, new IntentRouter(),
                 Runnable::run, properties);
 
         when(sessionManager.retune(eq(SESSION_ID), eq(USER_ID), any())).thenReturn(session);
+        when(chat.isReachable(any())).thenReturn(true);
         when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
         when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of());
         when(sessionManager.append(any(), any(), any(), anyInt()))
@@ -197,9 +198,11 @@ class AgentBrainServiceTest {
 
     @Test
     void acikKanalYokkenAkisReddedilir() {
-        assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "soru", null))
+        when(chat.isReachable(any())).thenReturn(false);
+
+        assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "soru", null, "t-1"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("acik bir akis kanali yok");
+                .hasMessageContaining("bagli bir istemci kanali yok");
     }
 
     @Test
@@ -236,9 +239,8 @@ class AgentBrainServiceTest {
         StubOllmProvider provider = new StubOllmProvider(List.of("liste hazir"));
         when(modelRouter.provider()).thenReturn(provider);
         when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
-        emitters.open(SESSION_ID, 30_000L);
 
-        brainService.streamInto(SESSION_ID, USER_ID, "Senaryolari listele", null);
+        brainService.streamInto(SESSION_ID, USER_ID, "Senaryolari listele", null, "t-1");
 
         assertThat(provider.calls()).isEqualTo(1);
         assertThat(provider.streams()).isZero();
@@ -249,9 +251,8 @@ class AgentBrainServiceTest {
     void sohbetTuruGercekAkisiKullanir() {
         StubOllmProvider provider = new StubOllmProvider(List.of("merhaba"));
         when(modelRouter.provider()).thenReturn(provider);
-        emitters.open(SESSION_ID, 30_000L);
 
-        brainService.streamInto(SESSION_ID, USER_ID, "merhaba", null);
+        brainService.streamInto(SESSION_ID, USER_ID, "merhaba", null, "t-2");
 
         assertThat(provider.streams()).isEqualTo(1);
         assertThat(provider.calls()).isZero();

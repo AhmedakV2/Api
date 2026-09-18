@@ -13,6 +13,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public static final String ENDPOINT = "/ws/agent";
     public static final String TOOL_QUEUE = "/queue/tools";
+    public static final String CHAT_QUEUE = "/queue/chat";
 
     private final StompAuthInterceptor authInterceptor;
     private final CorsProperties corsProperties;

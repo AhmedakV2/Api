@@ -17,10 +17,15 @@ import com.aft.api.agent.tool.ToolSpec;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.common.exception.ErrorCode;
 import com.aft.api.config.AiProperties;
-import com.aft.api.realtime.SseEmitterRegistry;
+import com.aft.api.agent.dto.ChatFrame;
+import com.aft.api.realtime.ChatChannel;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
@@ -43,7 +48,7 @@ public class AgentBrainService {
     private final PromptLibrary promptLibrary;
     private final ModelRouter modelRouter;
     private final ModelUsageService usageService;
-    private final SseEmitterRegistry emitters;
+    private final ChatChannel chat;
     private final ToolRegistry toolRegistry;
     private final IntentRouter intentRouter;
     private final Executor toolExecutor;
@@ -54,7 +59,7 @@ public class AgentBrainService {
                              PromptLibrary promptLibrary,
                              ModelRouter modelRouter,
                              ModelUsageService usageService,
-                             SseEmitterRegistry emitters,
+                             ChatChannel chat,
                              ToolRegistry toolRegistry,
                              IntentRouter intentRouter,
                              @Qualifier("agentToolExecutor") Executor toolExecutor,
@@ -64,7 +69,7 @@ public class AgentBrainService {
         this.promptLibrary = promptLibrary;
         this.modelRouter = modelRouter;
         this.usageService = usageService;
-        this.emitters = emitters;
+        this.chat = chat;
         this.toolRegistry = toolRegistry;
         this.intentRouter = intentRouter;
         this.toolExecutor = toolExecutor;
@@ -100,68 +105,101 @@ public class AgentBrainService {
                 session.getModel(), tokenIn, tokenOut);
     }
 
-    public void streamInto(UUID sessionId, UUID userId, String content, String model) {
+    public void streamInto(UUID sessionId, UUID userId, String content, String model, String turnId) {
         AgentSession session = sessionManager.retune(sessionId, userId, model);
-        if (!emitters.isOpen(sessionId)) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "Bu oturum icin acik bir akis kanali yok");
+        UUID deviceId = session.getDeviceId();
+        if (!chat.isReachable(deviceId)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "Bu oturum icin bagli bir istemci kanali yok");
         }
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
         ToolIntent intent = routeIntent(session, content);
+        toolExecutor.execute(() -> runTurn(sessionId, userId, session, intent, turnId));
+    }
+
+    private void runTurn(UUID sessionId, UUID userId, AgentSession session,
+                         ToolIntent intent, String turnId) {
         if (intentRouter.offersTools(intent)) {
-            toolExecutor.execute(() -> blockingInto(sessionId, userId, session, content, intent));
+            blockingInto(sessionId, userId, session, turnId, intent);
             return;
         }
+        streamingInto(sessionId, userId, session, turnId, intent);
+    }
 
+    private void streamingInto(UUID sessionId, UUID userId, AgentSession session,
+                               String turnId, ToolIntent intent) {
+        UUID deviceId = session.getDeviceId();
         List<Message> prompt = buildPrompt(session, intent);
-        OllmProvider provider = modelRouter.provider();
-        StringBuilder buffer = new StringBuilder();
-        AtomicInteger tokenIn = new AtomicInteger();
-        AtomicInteger tokenOut = new AtomicInteger();
-
         AgentMessage placeholder = sessionManager.append(sessionId, MessageRole.ASSISTANT, "", 0);
         ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
         toolContext.bindMessage(placeholder.getId());
 
-        Disposable subscription = provider.stream(prompt, options(session, toolContext, intent))
+        StringBuilder buffer = new StringBuilder();
+        AtomicInteger tokenIn = new AtomicInteger();
+        AtomicInteger tokenOut = new AtomicInteger();
+        AtomicBoolean stopped = new AtomicBoolean();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        CountDownLatch finished = new CountDownLatch(1);
+
+        Disposable subscription = modelRouter.provider()
+                .stream(prompt, options(session, toolContext, intent))
                 .doOnNext(chunk -> {
                     String piece = textOf(chunk);
                     if (!piece.isEmpty()) {
                         buffer.append(piece);
-                        emitters.sendText(sessionId, "delta", piece);
+                        chat.send(deviceId, ChatFrame.delta(turnId, sessionId, piece));
                     }
                     captureUsage(chunk, tokenIn, tokenOut);
                 })
-                .doOnError(error -> {
-                    log.error("Model akisi basarisiz sessionId={}", sessionId, error);
-                    String text = buffer.toString();
-                    if (text.isBlank()) {
-                        sessionManager.discard(placeholder.getId());
-                    } else {
-                        sessionManager.revise(placeholder.getId(), text, ConversationWindow.estimate(text));
-                    }
-                    emitters.fail(sessionId, "Model saglayici yanit vermedi: " + rootMessage(error));
-                })
-                .doOnComplete(() -> {
-                    String text = buffer.toString();
-                    AgentMessage saved = sessionManager.revise(placeholder.getId(), text,
-                            ConversationWindow.estimate(text));
-                    usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(),
-                            tokenIn.get(), tokenOut.get());
-                    emitters.send(sessionId, "done", saved.getId().toString());
-                    emitters.complete(sessionId);
-                })
+                .doOnError(error -> failure.set(error))
+                .doFinally(signal -> finished.countDown())
                 .subscribe();
 
-        emitters.attach(sessionId, subscription);
+        chat.begin(sessionId, turnId, () -> {
+            stopped.set(true);
+            subscription.dispose();
+        });
+
+        try {
+            awaitTurn(finished);
+            if (failure.get() != null) {
+                throw new IllegalStateException(failure.get());
+            }
+            String text = buffer.toString();
+            AgentMessage saved = sessionManager.revise(placeholder.getId(), text,
+                    ConversationWindow.estimate(text));
+            usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(),
+                    tokenIn.get(), tokenOut.get());
+            chat.send(deviceId, ChatFrame.done(turnId, sessionId, saved.getId(), session.getModel()));
+        } catch (RuntimeException e) {
+            String text = buffer.toString();
+            if (text.isBlank()) {
+                sessionManager.discard(placeholder.getId());
+            } else {
+                sessionManager.revise(placeholder.getId(), text, ConversationWindow.estimate(text));
+            }
+            if (stopped.get()) {
+                chat.send(deviceId, ChatFrame.error(turnId, sessionId, "Uretim durduruldu"));
+            } else {
+                log.error("Model akisi basarisiz sessionId={}", sessionId, e);
+                chat.send(deviceId, ChatFrame.error(turnId, sessionId,
+                        "Model saglayici yanit vermedi: " + rootMessage(e)));
+            }
+        } finally {
+            chat.finish(sessionId, turnId);
+        }
     }
 
     private void blockingInto(UUID sessionId, UUID userId, AgentSession session,
-                              String content, ToolIntent intent) {
+                              String turnId, ToolIntent intent) {
+        UUID deviceId = session.getDeviceId();
         List<Message> prompt = buildPrompt(session, intent);
         AgentMessage placeholder = sessionManager.append(sessionId, MessageRole.ASSISTANT, "", 0);
         ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
         toolContext.bindMessage(placeholder.getId());
+        Thread worker = Thread.currentThread();
+        chat.begin(sessionId, turnId, worker::interrupt);
 
         try {
             ChatResponse response = modelRouter.provider()
@@ -172,14 +210,27 @@ public class AgentBrainService {
             usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(),
                     tokenIn(response), tokenOut(response));
             if (!text.isEmpty()) {
-                emitters.sendText(sessionId, "delta", text);
+                chat.send(deviceId, ChatFrame.delta(turnId, sessionId, text));
             }
-            emitters.send(sessionId, "done", saved.getId().toString());
-            emitters.complete(sessionId);
+            chat.send(deviceId, ChatFrame.done(turnId, sessionId, saved.getId(), session.getModel()));
         } catch (RuntimeException e) {
             log.error("Aracli tur basarisiz sessionId={}", sessionId, e);
             sessionManager.discard(placeholder.getId());
-            emitters.fail(sessionId, "Model saglayici yanit vermedi: " + rootMessage(e));
+            chat.send(deviceId, ChatFrame.error(turnId, sessionId,
+                    "Model saglayici yanit vermedi: " + rootMessage(e)));
+        } finally {
+            chat.finish(sessionId, turnId);
+        }
+    }
+
+    private void awaitTurn(CountDownLatch finished) {
+        try {
+            if (!finished.await(properties.requestTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
+                throw new IllegalStateException("Model yanit suresi asildi");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Tur kesildi", e);
         }
     }
 
