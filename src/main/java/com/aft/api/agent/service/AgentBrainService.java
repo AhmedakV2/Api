@@ -120,11 +120,17 @@ public class AgentBrainService {
 
     private void runTurn(UUID sessionId, UUID userId, AgentSession session,
                          ToolIntent intent, String turnId) {
-        if (intentRouter.offersTools(intent)) {
-            blockingInto(sessionId, userId, session, turnId, intent);
-            return;
+        try {
+            if (intentRouter.offersTools(intent)) {
+                blockingInto(sessionId, userId, session, turnId, intent);
+            } else {
+                streamingInto(sessionId, userId, session, turnId, intent);
+            }
+        } catch (RuntimeException e) {
+            log.error("Tur baslatilamadi sessionId={}", sessionId, e);
+            chat.send(session.getDeviceId(), ChatFrame.error(turnId, sessionId, rootMessage(e)));
+            chat.finish(sessionId, turnId);
         }
-        streamingInto(sessionId, userId, session, turnId, intent);
     }
 
     private void streamingInto(UUID sessionId, UUID userId, AgentSession session,
