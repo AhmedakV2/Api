@@ -90,6 +90,9 @@ public class AgentSessionController {
                                                  @Valid @RequestBody AgentRequest request,
                                                  @AuthenticationPrincipal AftPrincipal principal) {
         if (stream) {
+            if (!emitters.isOpen(id)) {
+                return ResponseEntity.ok(brainService.respond(id, principal.userId(), request.content()));
+            }
             brainService.streamInto(id, principal.userId(), request.content());
             return ResponseEntity.accepted().build();
         }

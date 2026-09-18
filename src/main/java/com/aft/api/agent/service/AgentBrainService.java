@@ -9,6 +9,7 @@ import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.prompt.SystemPrompts;
 import com.aft.api.agent.provider.ModelProvider;
 import com.aft.api.agent.provider.ModelRouter;
+import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.tool.ToolCallContext;
 import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.agent.tool.ToolSpec;
@@ -25,6 +26,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -212,6 +214,15 @@ public class AgentBrainService {
             log.info("Modele {} arac sunuluyor sessionId={} deviceId={}",
                     callbacks.size(), session.getId(), session.getDeviceId());
         }
+
+        if (modelRouter.provider().name() == ProviderName.OPENAI) {
+            return OpenAiChatOptions.builder()
+                    .model(session.getModel())
+                    .toolCallbacks(callbacks)
+                    .toolContext(Map.of(ToolCallContext.KEY, toolContext))
+                    .build();
+        }
+
         return ToolCallingChatOptions.builder()
                 .model(session.getModel())
                 .toolCallbacks(callbacks)
