@@ -18,7 +18,6 @@ public class StubModelProvider implements ModelProvider {
     private final List<String> chunks;
     private final RuntimeException failure;
     private final ProviderName providerName;
-    private ChatOptions defaultOptions;
     private Prompt lastPrompt;
 
     public StubModelProvider(List<String> chunks) {

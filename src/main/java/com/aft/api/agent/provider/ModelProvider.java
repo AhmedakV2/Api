@@ -2,12 +2,15 @@ package com.aft.api.agent.provider;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import reactor.core.publisher.Flux;
 
@@ -19,14 +22,30 @@ public interface ModelProvider {
     default ToolCallingChatOptions toolOptions(String model,
                                                List<ToolCallback> callbacks,
                                                Map<String, Object> toolContext) {
-        ChatOptions defaults = chatModel().getDefaultOptions();
-        if (defaults instanceof ToolCallingChatOptions tooling) {
-            ToolCallingChatOptions.Builder<?> builder = tooling.mutate();
-            builder.model(model);
-            builder.toolCallbacks(callbacks);
-            builder.toolContext(toolContext);
-            return builder.build();
+        if (name() == ProviderName.OPENAI) {
+            return OpenAiChatOptions.builder()
+                    .model(model)
+                    .toolCallbacks(callbacks)
+                    .toolContext(toolContext)
+                    .build();
         }
+
+        if (name() == ProviderName.OLLAMA) {
+            return OllamaChatOptions.builder()
+                    .model(model)
+                    .toolCallbacks(callbacks)
+                    .toolContext(toolContext)
+                    .build();
+        }
+
+        if (name() == ProviderName.ANTHROPIC) {
+            return AnthropicChatOptions.builder()
+                    .model(model)
+                    .toolCallbacks(callbacks)
+                    .toolContext(toolContext)
+                    .build();
+        }
+
         return ToolCallingChatOptions.builder()
                 .model(model)
                 .toolCallbacks(callbacks)

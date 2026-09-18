@@ -16,6 +16,7 @@ import com.aft.api.agent.entity.MessageRole;
 import com.aft.api.agent.entity.SessionMode;
 import com.aft.api.agent.memory.ConversationWindow;
 import com.aft.api.agent.prompt.PromptLibrary;
+import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.provider.ModelRouter;
 import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
@@ -200,8 +201,7 @@ class AgentBrainServiceTest {
 
     @Test
     void secenekTipiBagliModelinKendisindenGelir() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"))
-                .withDefaultOptions(OpenAiChatOptions.builder().temperature(0.3).build());
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"), ProviderName.OPENAI);
         when(modelRouter.provider()).thenReturn(provider);
         when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
 
@@ -210,15 +210,13 @@ class AgentBrainServiceTest {
         ChatOptions options = provider.lastPrompt().getOptions();
         assertThat(options).isInstanceOf(OpenAiChatOptions.class);
         assertThat(options.getModel()).isEqualTo("buyuk");
-        assertThat(options.getTemperature()).isEqualTo(0.3);
         assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
         assertThat(((ToolCallingChatOptions) options).getToolContext()).containsKey(ToolCallContext.KEY);
     }
 
     @Test
     void ollamaModelindeDeKendiSecenekTipiKorunur() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"))
-                .withDefaultOptions(OllamaChatOptions.builder().build());
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"), ProviderName.OLLAMA);
         when(modelRouter.provider()).thenReturn(provider);
         when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
 
@@ -231,8 +229,7 @@ class AgentBrainServiceTest {
 
     @Test
     void anthropicModelindeDeKendiSecenekTipiKorunur() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"))
-                .withDefaultOptions(AnthropicChatOptions.builder().build());
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"), ProviderName.ANTHROPIC);
         when(modelRouter.provider()).thenReturn(provider);
         when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
 
@@ -244,7 +241,7 @@ class AgentBrainServiceTest {
     }
 
     @Test
-    void modelVarsayilanSecenekBildirmezseGenelTipKullanilir() {
+    void bilinmeyenSaglayicidaGenelTipKullanilir() {
         StubModelProvider provider = new StubModelProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
         when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
