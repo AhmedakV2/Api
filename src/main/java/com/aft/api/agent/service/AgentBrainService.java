@@ -12,6 +12,7 @@ import com.aft.api.agent.provider.ModelRouter;
 import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.tool.ToolCallContext;
 import com.aft.api.agent.tool.ToolRegistry;
+import com.aft.api.agent.tool.ToolSpec;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.common.exception.ErrorCode;
 import com.aft.api.config.AiProperties;
@@ -66,13 +67,21 @@ public class AgentBrainService {
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
         List<Message> prompt = buildPrompt(session);
+        AgentMessage placeholder = sessionManager.append(sessionId, MessageRole.ASSISTANT, "", 0);
         ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
-        ChatResponse response = callModel(session, prompt, toolContext);
-        String text = textOf(response);
+        toolContext.bindMessage(placeholder.getId());
 
-        AgentMessage saved = sessionManager.append(sessionId, MessageRole.ASSISTANT, text,
+        ChatResponse response;
+        try {
+            response = callModel(session, prompt, toolContext);
+        } catch (RuntimeException e) {
+            sessionManager.discard(placeholder.getId());
+            throw e;
+        }
+
+        String text = textOf(response);
+        AgentMessage saved = sessionManager.revise(placeholder.getId(), text,
                 ConversationWindow.estimate(text));
-        toolContext.bindMessage(saved.getId());
         int tokenIn = tokenIn(response);
         int tokenOut = tokenOut(response);
         usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(), tokenIn, tokenOut);
@@ -94,7 +103,10 @@ public class AgentBrainService {
         AtomicInteger tokenIn = new AtomicInteger();
         AtomicInteger tokenOut = new AtomicInteger();
 
+        AgentMessage placeholder = sessionManager.append(sessionId, MessageRole.ASSISTANT, "", 0);
         ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
+        toolContext.bindMessage(placeholder.getId());
+
         Disposable subscription = provider.stream(prompt, options(session, toolContext))
                 .doOnNext(chunk -> {
                     String piece = textOf(chunk);
@@ -106,11 +118,17 @@ public class AgentBrainService {
                 })
                 .doOnError(error -> {
                     log.error("Model akisi basarisiz sessionId={}", sessionId, error);
+                    String text = buffer.toString();
+                    if (text.isBlank()) {
+                        sessionManager.discard(placeholder.getId());
+                    } else {
+                        sessionManager.revise(placeholder.getId(), text, ConversationWindow.estimate(text));
+                    }
                     emitters.fail(sessionId, "Model saglayici yanit vermedi: " + rootMessage(error));
                 })
                 .doOnComplete(() -> {
                     String text = buffer.toString();
-                    AgentMessage saved = sessionManager.append(sessionId, MessageRole.ASSISTANT, text,
+                    AgentMessage saved = sessionManager.revise(placeholder.getId(), text,
                             ConversationWindow.estimate(text));
                     usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(),
                             tokenIn.get(), tokenOut.get());
@@ -123,7 +141,8 @@ public class AgentBrainService {
     }
 
     private List<Message> buildPrompt(AgentSession session) {
-        String system = promptLibrary.system(SystemPrompts.PLANNER, session.getMode());
+        List<ToolSpec> tools = toolRegistry.catalogFor(session.getDeviceId());
+        String system = promptLibrary.system(SystemPrompts.PLANNER, session.getMode(), tools);
         return conversationWindow.build(system,
                 sessionManager.recentHistory(session.getId(), properties.maxWindowMessages()));
     }
@@ -185,23 +204,21 @@ public class AgentBrainService {
         return value == null ? 0 : value;
     }
 
-    private org.springframework.ai.chat.prompt.ChatOptions options(AgentSession session, ToolCallContext toolContext) {
-            ModelProvider provider = modelRouter.provider();
-            List<ToolCallback> callbacks = toolRegistry.callbacksFor(session.getDeviceId());
-
-            if (provider.name() == ProviderName.OPENAI) {
-                // OpenAI implementation expects OpenAiChatOptions specifically
-                return org.springframework.ai.openai.OpenAiChatOptions.builder()
-                        .model(session.getModel())
-                        .build();
-            }
-
-            return ToolCallingChatOptions.builder()
-                    .model(session.getModel())
-                    .toolCallbacks(callbacks)
-                    .toolContext(Map.of(ToolCallContext.KEY, toolContext))
-                    .build();
+    private ToolCallingChatOptions options(AgentSession session, ToolCallContext toolContext) {
+        List<ToolCallback> callbacks = toolRegistry.callbacksFor(session.getDeviceId());
+        if (callbacks.isEmpty()) {
+            log.warn("Modele arac sunulmuyor sessionId={} deviceId={}, yalnizca metinsel yanit uretilecek",
+                    session.getId(), session.getDeviceId());
+        } else {
+            log.info("Modele {} arac sunuluyor sessionId={} deviceId={}",
+                    callbacks.size(), session.getId(), session.getDeviceId());
         }
+        return ToolCallingChatOptions.builder()
+                .model(session.getModel())
+                .toolCallbacks(callbacks)
+                .toolContext(Map.of(ToolCallContext.KEY, toolContext))
+                .build();
+    }
 
     public long streamTimeoutMillis() {
         return properties.requestTimeout().toMillis();

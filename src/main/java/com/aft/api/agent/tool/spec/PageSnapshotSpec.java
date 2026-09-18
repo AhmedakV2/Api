@@ -14,7 +14,11 @@ public class PageSnapshotSpec implements ToolSpec {
 
     @Override
     public String description() {
-        return "Acik sayfanin element grafigini cikarir. Tarama seviyesi arttikca daha fazla ayrinti gelir.";
+        return "Acik sayfayi tarar ve etkilesime girilebilen elementleri sade bir liste halinde doner. "
+                + "Her elementte ref, tag, role, name, text, testId, elementId, fieldName alanlari ve "
+                + "hazir bir target nesnesi bulunur. browser_command icin element.ref degerini, "
+                + "scenario_draft_write adimlari icin element.target nesnesini oldugu gibi kullan. "
+                + "Liste uzunsa limit dusur veya filter ile daralt.";
     }
 
     @Override
@@ -33,9 +37,30 @@ public class PageSnapshotSpec implements ToolSpec {
                       "type": "boolean",
                       "default": false,
                       "description": "Onbellekteki grafigi yok sayip yeniden tara"
+                    },
+                    "filter": {
+                      "type": "string",
+                      "description": "Etiket, metin, rol, ad veya id uzerinde gecen metin suzgeci"
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 400,
+                      "default": 120,
+                      "description": "Donecek element sayisi"
+                    },
+                    "allElements": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "true ise yalnizca etkilesimli olanlar degil tum elementler doner"
                     }
                   }
                 }
                 """;
+    }
+
+    @Override
+    public long timeoutMs() {
+        return 120_000L;
     }
 }

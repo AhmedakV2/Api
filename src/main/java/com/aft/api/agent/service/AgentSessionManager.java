@@ -93,6 +93,19 @@ public class AgentSessionManager {
         return messageRepository.save(new AgentMessage(sessionId, nextSeq, role, content, tokenCount));
     }
 
+    @Transactional
+    public AgentMessage revise(UUID messageId, String content, int tokenCount) {
+        AgentMessage message = messageRepository.findById(messageId)
+                .orElseThrow(() -> NotFoundException.of("AgentMessage", messageId));
+        message.revise(content, tokenCount);
+        return messageRepository.save(message);
+    }
+
+    @Transactional
+    public void discard(UUID messageId) {
+        messageRepository.findById(messageId).ifPresent(messageRepository::delete);
+    }
+
     @Transactional(readOnly = true)
     public List<AgentMessage> recentHistory(UUID sessionId, int limit) {
         List<AgentMessage> recent = new ArrayList<>(messageRepository.findRecent(sessionId, limit));

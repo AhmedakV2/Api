@@ -14,7 +14,9 @@ public class BrowserCommandSpec implements ToolSpec {
 
     @Override
     public String description() {
-        return "Tarayicida bir eylem calistirir. Hedef ref, descriptorId veya ordinal ile belirtilir. "
+        return "Tarayicida tek bir eylem calistirir ve sonucunu doner. Hedefi page_snapshot ciktisindaki "
+                + "element.ref degeriyle ver; descriptorId veya ordinal de kullanilabilir. "
+                + "Kalici bir akis kurmak icin bunun yerine scenario_draft_write kullan. "
                 + "Kullanici onayi gerektirir.";
     }
 

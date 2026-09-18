@@ -48,6 +48,11 @@ public class AgentMessage {
         this.tokenCount = tokenCount;
     }
 
+    public void revise(String value, int tokens) {
+        this.content = value;
+        this.tokenCount = tokens;
+    }
+
     public UUID getId() {
         return id;
     }

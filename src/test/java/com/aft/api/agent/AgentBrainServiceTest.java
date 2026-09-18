@@ -21,6 +21,7 @@ import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
 import com.aft.api.agent.service.ModelUsageService;
 import com.aft.api.agent.tool.ToolRegistry;
+import com.aft.api.agent.tool.ToolSpec;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.config.AiProperties;
 import com.aft.api.realtime.SseEmitterRegistry;
@@ -43,6 +44,7 @@ class AgentBrainServiceTest {
     private static final UUID SESSION_ID = UUID.randomUUID();
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID ORG_ID = UUID.randomUUID();
+    private static final UUID MESSAGE_ID = UUID.randomUUID();
 
     @Mock
     private AgentSessionManager sessionManager;
@@ -71,8 +73,9 @@ class AgentBrainServiceTest {
         when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
         when(toolRegistry.callbacksFor(any())).thenReturn(List.of());
         when(sessionManager.append(any(), any(), any(), anyInt()))
-                .thenAnswer(call -> new AgentMessage(SESSION_ID, 1, call.getArgument(1),
-                        call.getArgument(2), call.getArgument(3)));
+                .thenAnswer(call -> stored(call.getArgument(1), call.getArgument(2), call.getArgument(3)));
+        when(sessionManager.revise(any(), any(), anyInt()))
+                .thenAnswer(call -> stored(MessageRole.ASSISTANT, call.getArgument(1), call.getArgument(2)));
     }
 
     @Test
@@ -86,7 +89,66 @@ class AgentBrainServiceTest {
         assertThat(response.tokenIn()).isEqualTo(11);
         assertThat(response.tokenOut()).isEqualTo(7);
         verify(sessionManager).append(SESSION_ID, MessageRole.USER, "selam", ConversationWindow.estimate("selam"));
-        verify(sessionManager).append(eq(SESSION_ID), eq(MessageRole.ASSISTANT), eq("merhaba dunya"), anyInt());
+        verify(sessionManager).append(eq(SESSION_ID), eq(MessageRole.ASSISTANT), eq(""), anyInt());
+        verify(sessionManager).revise(eq(MESSAGE_ID), eq("merhaba dunya"), anyInt());
+    }
+
+    @Test
+    void saglayiciHatasindaBosYanitMesajiSilinir() {
+        when(modelRouter.provider()).thenReturn(
+                StubModelProvider.failing(new IllegalStateException("baglanti yok")));
+
+        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "soru"))
+                .isInstanceOf(ApiException.class);
+        verify(sessionManager).discard(MESSAGE_ID);
+    }
+
+    @Test
+    void aracKataloguIstemeYazilir() {
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.catalogFor(any())).thenReturn(List.of(new ToolSpec() {
+            @Override
+            public String name() {
+                return "local_scenario_run";
+            }
+
+            @Override
+            public String description() {
+                return "Senaryoyu kosar";
+            }
+
+            @Override
+            public String inputSchema() {
+                return "{}";
+            }
+
+            @Override
+            public boolean writeEffect() {
+                return true;
+            }
+        }));
+
+        brainService.respond(SESSION_ID, USER_ID, "soru");
+
+        String system = provider.lastPrompt().getInstructions().getFirst().getText();
+        assertThat(system).contains("local_scenario_run");
+        assertThat(system).contains("Senaryoyu kosar");
+        assertThat(system).contains("kullanici onayi ister");
+        assertThat(system).doesNotContain("{tools}");
+    }
+
+    @Test
+    void istemciYokkenAracListesiBosBildirilir() {
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.catalogFor(any())).thenReturn(List.of());
+
+        brainService.respond(SESSION_ID, USER_ID, "soru");
+
+        String system = provider.lastPrompt().getInstructions().getFirst().getText();
+        assertThat(system).contains("bagli bir istemci yok");
+        assertThat(system).doesNotContain("{tools}");
     }
 
     @Test
@@ -125,5 +187,11 @@ class AgentBrainServiceTest {
         assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "soru"))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("acik bir akis kanali yok");
+    }
+
+    private static AgentMessage stored(MessageRole role, String content, int tokenCount) {
+        AgentMessage message = new AgentMessage(SESSION_ID, 1, role, content, tokenCount);
+        ReflectionTestUtils.setField(message, "id", MESSAGE_ID);
+        return message;
     }
 }

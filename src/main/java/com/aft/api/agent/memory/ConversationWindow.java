@@ -52,6 +52,9 @@ public class ConversationWindow {
     }
 
     private Message convert(AgentMessage entry) {
+        if (entry.getContent() == null || entry.getContent().isBlank()) {
+            return null;
+        }
         if (entry.getRole() == MessageRole.USER) {
             return new UserMessage(entry.getContent());
         }
