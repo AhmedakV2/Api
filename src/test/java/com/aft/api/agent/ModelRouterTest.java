@@ -4,64 +4,90 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.aft.api.agent.provider.ModelRouter;
-import com.aft.api.agent.provider.ProviderName;
-import com.aft.api.agent.provider.TaskKind;
+import com.aft.api.agent.provider.ModelTier;
+import com.aft.api.agent.provider.OllmProvider;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.config.AiProperties;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 class ModelRouterTest {
-    private AiProperties properties(String provider, String planner, String fast) {
-        return new AiProperties(provider, new AiProperties.Models(planner, fast, null),
-                Duration.ofSeconds(30), 40, 24000, Duration.ofSeconds(30), 12, 262144);
+
+    private AiProperties properties(String tier, String fast, String slow, String ultra) {
+        return new AiProperties(new AiProperties.Models(fast, slow, ultra, null), tier,
+                Duration.ofSeconds(300), 40, 24000, Duration.ofSeconds(30), 12, 262144);
+    }
+
+    private ModelRouter router(AiProperties properties, OllmProvider provider) {
+        return new ModelRouter(new ObjectProvider<>() {
+            @Override
+            public OllmProvider getObject() {
+                return provider;
+            }
+
+            @Override
+            public OllmProvider getIfAvailable() {
+                return provider;
+            }
+        }, properties);
     }
 
     @Test
-    void planlamaVeHizliGorevFarkliModelSecer() {
-        ModelRouter router = new ModelRouter(List.of(new StubModelProvider(List.of())),
-                properties("ollama", "buyuk-model", "kucuk-model"));
+    void ucProfilAyriModelSecer() {
+        ModelRouter router = router(properties("FAST", "hizli-m", "yavas-m", "ultra-m"),
+                new StubOllmProvider(List.of()));
 
-        assertThat(router.modelFor(TaskKind.PLANNING)).isEqualTo("buyuk-model");
-        assertThat(router.modelFor(TaskKind.FAST)).isEqualTo("kucuk-model");
+        assertThat(router.modelFor(ModelTier.FAST)).isEqualTo("hizli-m");
+        assertThat(router.modelFor(ModelTier.SLOW)).isEqualTo("yavas-m");
+        assertThat(router.modelFor(ModelTier.ULTRA)).isEqualTo("ultra-m");
     }
 
     @Test
-    void hizliModelVerilmezsePlanlamaModeliKullanilir() {
-        ModelRouter router = new ModelRouter(List.of(new StubModelProvider(List.of())),
-                properties("ollama", "tek-model", null));
+    void ustProfillerVerilmezseBirAlttakineDuser() {
+        ModelRouter router = router(properties("FAST", "tek-model", null, null),
+                new StubOllmProvider(List.of()));
 
-        assertThat(router.modelFor(TaskKind.FAST)).isEqualTo("tek-model");
-        assertThat(router.availableModels()).containsExactly("tek-model");
+        assertThat(router.modelFor(ModelTier.SLOW)).isEqualTo("tek-model");
+        assertThat(router.modelFor(ModelTier.ULTRA)).isEqualTo("tek-model");
     }
 
     @Test
-    void yapilandirilanSaglayiciDoner() {
-        ModelRouter router = new ModelRouter(List.of(new StubModelProvider(List.of())),
-                properties("ollama", "model", "model"));
+    void katalogUcProfiliEtiketleriyleDoner() {
+        ModelRouter router = router(properties("SLOW", "hizli-m", "yavas-m", "ultra-m"),
+                new StubOllmProvider(List.of()));
 
-        assertThat(router.provider().name()).isEqualTo(ProviderName.OLLAMA);
-        assertThat(router.activeProviders()).containsExactly(ProviderName.OLLAMA);
+        assertThat(router.tiers()).hasSize(3);
+        assertThat(router.tiers()).extracting("tier").containsExactly("FAST", "SLOW", "ULTRA");
+        assertThat(router.tiers()).extracting("label").containsExactly("Hizli", "Yavas", "Ultra");
+        assertThat(router.defaultTier()).isEqualTo(ModelTier.SLOW);
     }
 
     @Test
-    void etkinOlmayanSaglayiciHataVerir() {
-        ModelRouter router = new ModelRouter(List.of(new StubModelProvider(List.of())),
-                properties("anthropic", "model", "model"));
+    void bilinmeyenVarsayilanProfilHizliyaDuser() {
+        ModelRouter router = router(properties("bilinmeyen", "hizli-m", "yavas-m", "ultra-m"),
+                new StubOllmProvider(List.of()));
 
+        assertThat(router.defaultTier()).isEqualTo(ModelTier.FAST);
+    }
+
+    @Test
+    void modelAdindanProfilBulunur() {
+        ModelRouter router = router(properties("FAST", "hizli-m", "yavas-m", "ultra-m"),
+                new StubOllmProvider(List.of()));
+
+        assertThat(router.tierOfModel("ultra-m")).isEqualTo(ModelTier.ULTRA);
+        assertThat(router.tierOfModel("bilinmeyen")).isEqualTo(ModelTier.FAST);
+    }
+
+    @Test
+    void modelYapilandirilmamissaAnlasilirHataVerir() {
+        ModelRouter router = router(properties("FAST", "m", "m", "m"), null);
+
+        assertThat(router.isReady()).isFalse();
         assertThatThrownBy(router::provider)
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("etkin degil");
-    }
-
-    @Test
-    void bilinmeyenSaglayiciAdiHataVerir() {
-        ModelRouter router = new ModelRouter(List.of(new StubModelProvider(List.of())),
-                properties("bilinmeyen", "model", "model"));
-
-        assertThatThrownBy(router::provider)
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Bilinmeyen saglayici");
+                .hasMessageContaining("OLLM_BASE_URL");
     }
 }

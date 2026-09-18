@@ -17,8 +17,8 @@ class ConversationWindowTest {
     private static final UUID SESSION = UUID.randomUUID();
 
     private ConversationWindow window(int maxMessages, int maxTokens) {
-        return new ConversationWindow(new AiProperties("ollama", null,
-                Duration.ofSeconds(30), maxMessages, maxTokens, Duration.ofSeconds(30), 12, 262144));
+        return new ConversationWindow(new AiProperties(null, "FAST",
+                Duration.ofSeconds(300), maxMessages, maxTokens, Duration.ofSeconds(30), 12, 262144));
     }
 
     private List<AgentMessage> history(int count) {

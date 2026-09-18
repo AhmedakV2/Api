@@ -9,7 +9,6 @@ import com.aft.api.agent.entity.AgentSession;
 import com.aft.api.agent.entity.MessageRole;
 import com.aft.api.agent.entity.SessionStatus;
 import com.aft.api.agent.provider.ModelRouter;
-import com.aft.api.agent.provider.TaskKind;
 import com.aft.api.agent.repository.AgentMessageRepository;
 import com.aft.api.agent.repository.AgentSessionRepository;
 import com.aft.api.common.audit.AuditAction;
@@ -55,7 +54,7 @@ public class AgentSessionManager {
             throw new ValidationException("Cihaz bu organizasyona ait degil");
         }
         String model = (request.model() == null || request.model().isBlank())
-                ? modelRouter.modelFor(TaskKind.PLANNING) : request.model();
+                ? modelRouter.modelFor(modelRouter.defaultTier()) : request.model();
 
         AgentSession session = sessionRepository.save(new AgentSession(request.orgId(), userId,
                 request.deviceId(), request.title(), request.mode(), model));
@@ -91,6 +90,15 @@ public class AgentSessionManager {
     public AgentMessage append(UUID sessionId, MessageRole role, String content, int tokenCount) {
         int nextSeq = messageRepository.findMaxSeq(sessionId) + 1;
         return messageRepository.save(new AgentMessage(sessionId, nextSeq, role, content, tokenCount));
+    }
+
+    @Transactional
+    public AgentSession retune(UUID sessionId, UUID userId, String model) {
+        AgentSession session = requireOpen(sessionId, userId);
+        if (model != null && !model.isBlank() && !model.equals(session.getModel())) {
+            session.retune(model);
+        }
+        return session;
     }
 
     @Transactional

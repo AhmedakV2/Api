@@ -7,9 +7,8 @@ import com.aft.api.agent.entity.MessageRole;
 import com.aft.api.agent.memory.ConversationWindow;
 import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.prompt.SystemPrompts;
-import com.aft.api.agent.provider.ModelProvider;
+import com.aft.api.agent.provider.OllmProvider;
 import com.aft.api.agent.provider.ModelRouter;
-import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.tool.ToolCallContext;
 import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.agent.tool.ToolSpec;
@@ -62,8 +61,8 @@ public class AgentBrainService {
         this.properties = properties;
     }
 
-    public AgentResponse respond(UUID sessionId, UUID userId, String content) {
-        AgentSession session = sessionManager.requireOpen(sessionId, userId);
+    public AgentResponse respond(UUID sessionId, UUID userId, String content, String model) {
+        AgentSession session = sessionManager.retune(sessionId, userId, model);
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
         List<Message> prompt = buildPrompt(session);
@@ -90,15 +89,15 @@ public class AgentBrainService {
                 session.getModel(), tokenIn, tokenOut);
     }
 
-    public void streamInto(UUID sessionId, UUID userId, String content) {
-        AgentSession session = sessionManager.requireOpen(sessionId, userId);
+    public void streamInto(UUID sessionId, UUID userId, String content, String model) {
+        AgentSession session = sessionManager.retune(sessionId, userId, model);
         if (!emitters.isOpen(sessionId)) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "Bu oturum icin acik bir akis kanali yok");
         }
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
         List<Message> prompt = buildPrompt(session);
-        ModelProvider provider = modelRouter.provider();
+        OllmProvider provider = modelRouter.provider();
         StringBuilder buffer = new StringBuilder();
         AtomicInteger tokenIn = new AtomicInteger();
         AtomicInteger tokenOut = new AtomicInteger();
@@ -112,7 +111,7 @@ public class AgentBrainService {
                     String piece = textOf(chunk);
                     if (!piece.isEmpty()) {
                         buffer.append(piece);
-                        emitters.send(sessionId, "delta", piece);
+                        emitters.sendText(sessionId, "delta", piece);
                     }
                     captureUsage(chunk, tokenIn, tokenOut);
                 })

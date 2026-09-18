@@ -2,6 +2,7 @@ package com.aft.api.realtime;
 
 import java.io.IOException;
 import java.util.Map;
+import tools.jackson.databind.json.JsonMapper;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
@@ -16,6 +17,11 @@ public class SseEmitterRegistry {
     private static final Logger log = LoggerFactory.getLogger(SseEmitterRegistry.class);
 
     private final Map<UUID, Entry> channels = new ConcurrentHashMap<>();
+    private final JsonMapper jsonMapper;
+
+    public SseEmitterRegistry(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
+    }
 
     public SseEmitter open(UUID sessionId, long timeoutMillis) {
         close(sessionId);
@@ -71,6 +77,10 @@ public class SseEmitterRegistry {
         }
         log.debug("SSE gonderimi basarisiz sessionId={}", sessionId);
         drop(sessionId, entry);
+    }
+
+    public void sendText(UUID sessionId, String event, String text) {
+        send(sessionId, event, jsonMapper.writeValueAsString(Map.of("text", text)));
     }
 
     public void complete(UUID sessionId) {

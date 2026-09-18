@@ -38,19 +38,19 @@ spring:
         write-dates-as-timestamps: false
   ai:
     model:
-      chat: ${AFT_AI_PROVIDER:ollama}
-      embedding: ${AFT_AI_EMBEDDING_PROVIDER:ollama}
+      chat: openai
+      embedding: none
       image: none
       moderation: none
       audio:
         speech: none
     openai:
-      base-url: ${FOALLM_BASE_URL:}
-      api-key: ${FOALLM_API_KEY:}
+      base-url: ${OLLM_BASE_URL:}
+      api-key: ${OLLM_API_KEY:}
       chat:
         options:
-          model: ${FOALLM_MODEL:Akgun-Q3.6}
-          temperature: ${FOALLM_TEMPERATURE:0.3}
+          model: ${OLLM_MODEL_FAST:Akgun-Q3.6}
+          temperature: ${OLLM_TEMPERATURE:0.3}
 
 server:
   port: ${AFT_SERVER_PORT:8092}
@@ -79,11 +79,12 @@ aft:
       agent-per-minute: ${AFT_RATE_AGENT:30}
     ws-ticket-ttl: PT60S
   ai:
-    provider: ${AFT_AI_PROVIDER:ollama}
+    default-tier: ${OLLM_DEFAULT_TIER:FAST}
     models:
-      planner: ${AFT_AI_MODEL_PLANNER:llama3.1:8b}
-      fast: ${AFT_AI_MODEL_FAST:llama3.1:8b}
-      embedding: ${AFT_AI_EMBEDDING_MODEL:nomic-embed-text}
+      fast: ${OLLM_MODEL_FAST:Akgun-Q3.6}
+      slow: ${OLLM_MODEL_SLOW:Akgun-Q3.6}
+      ultra: ${OLLM_MODEL_ULTRA:Akgun-Q3.6}
+      embedding: ${OLLM_EMBEDDING_MODEL:}
     request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT300S}
     max-window-messages: ${AFT_AI_MAX_WINDOW_MESSAGES:40}
     max-window-tokens: ${AFT_AI_MAX_WINDOW_TOKENS:24000}

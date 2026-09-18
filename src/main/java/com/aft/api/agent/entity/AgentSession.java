@@ -103,6 +103,10 @@ public class AgentSession {
         return mode;
     }
 
+    public void retune(String value) {
+        this.model = value;
+    }
+
     public String getModel() {
         return model;
     }
