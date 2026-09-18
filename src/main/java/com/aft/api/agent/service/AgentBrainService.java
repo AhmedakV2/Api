@@ -9,7 +9,6 @@ import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.prompt.SystemPrompts;
 import com.aft.api.agent.provider.ModelProvider;
 import com.aft.api.agent.provider.ModelRouter;
-import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.tool.ToolCallContext;
 import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.agent.tool.ToolSpec;
@@ -213,11 +212,8 @@ public class AgentBrainService {
             log.info("Modele {} arac sunuluyor sessionId={} deviceId={}",
                     callbacks.size(), session.getId(), session.getDeviceId());
         }
-        return ToolCallingChatOptions.builder()
-                .model(session.getModel())
-                .toolCallbacks(callbacks)
-                .toolContext(Map.of(ToolCallContext.KEY, toolContext))
-                .build();
+        return modelRouter.provider().toolOptions(session.getModel(), callbacks,
+                Map.of(ToolCallContext.KEY, toolContext));
     }
 
     public long streamTimeoutMillis() {

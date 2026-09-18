@@ -20,8 +20,11 @@ import com.aft.api.agent.provider.ModelRouter;
 import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
 import com.aft.api.agent.service.ModelUsageService;
+import com.aft.api.agent.tool.RemoteToolCallback;
+import com.aft.api.agent.tool.ToolCallContext;
 import com.aft.api.agent.tool.ToolRegistry;
 import com.aft.api.agent.tool.ToolSpec;
+import com.aft.api.agent.tool.spec.LocalScenarioReadSpec;
 import com.aft.api.common.exception.ApiException;
 import com.aft.api.config.AiProperties;
 import com.aft.api.realtime.SseEmitterRegistry;
@@ -36,6 +39,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -187,6 +196,69 @@ class AgentBrainServiceTest {
         assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "soru"))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("acik bir akis kanali yok");
+    }
+
+    @Test
+    void secenekTipiBagliModelinKendisindenGelir() {
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"))
+                .withDefaultOptions(OpenAiChatOptions.builder().temperature(0.3).build());
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+
+        brainService.respond(SESSION_ID, USER_ID, "soru");
+
+        ChatOptions options = provider.lastPrompt().getOptions();
+        assertThat(options).isInstanceOf(OpenAiChatOptions.class);
+        assertThat(options.getModel()).isEqualTo("buyuk");
+        assertThat(options.getTemperature()).isEqualTo(0.3);
+        assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
+        assertThat(((ToolCallingChatOptions) options).getToolContext()).containsKey(ToolCallContext.KEY);
+    }
+
+    @Test
+    void ollamaModelindeDeKendiSecenekTipiKorunur() {
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"))
+                .withDefaultOptions(OllamaChatOptions.builder().build());
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+
+        brainService.respond(SESSION_ID, USER_ID, "soru");
+
+        ChatOptions options = provider.lastPrompt().getOptions();
+        assertThat(options).isInstanceOf(OllamaChatOptions.class);
+        assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
+    }
+
+    @Test
+    void anthropicModelindeDeKendiSecenekTipiKorunur() {
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"))
+                .withDefaultOptions(AnthropicChatOptions.builder().build());
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+
+        brainService.respond(SESSION_ID, USER_ID, "soru");
+
+        ChatOptions options = provider.lastPrompt().getOptions();
+        assertThat(options).isInstanceOf(AnthropicChatOptions.class);
+        assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
+    }
+
+    @Test
+    void modelVarsayilanSecenekBildirmezseGenelTipKullanilir() {
+        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+
+        brainService.respond(SESSION_ID, USER_ID, "soru");
+
+        ChatOptions options = provider.lastPrompt().getOptions();
+        assertThat(options).isInstanceOf(ToolCallingChatOptions.class);
+        assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
+        assertThat(((ToolCallingChatOptions) options).getToolContext()).containsKey(ToolCallContext.KEY);
+    }
+
+    private static ToolCallback callback() {
+        return new RemoteToolCallback(new LocalScenarioReadSpec(), null);
     }
 
     private static AgentMessage stored(MessageRole role, String content, int tokenCount) {
