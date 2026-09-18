@@ -18,6 +18,7 @@ public class StubModelProvider implements ModelProvider {
     private final List<String> chunks;
     private final RuntimeException failure;
     private final ProviderName providerName;
+    private ChatOptions defaultOptions;
     private Prompt lastPrompt;
 
     public StubModelProvider(List<String> chunks) {
@@ -40,6 +41,11 @@ public class StubModelProvider implements ModelProvider {
 
     public static StubModelProvider failing(RuntimeException failure) {
         return new StubModelProvider(List.of(), failure);
+    }
+
+    public StubModelProvider withDefaultOptions(ChatOptions options) {
+        this.defaultOptions = options;
+        return this;
     }
 
     public Prompt lastPrompt() {
@@ -92,6 +98,11 @@ public class StubModelProvider implements ModelProvider {
     }
 
     private final class StubChatModel implements ChatModel {
+        @Override
+        public ChatOptions getDefaultOptions() {
+            return defaultOptions;
+        }
+
         @Override
         public ChatResponse call(Prompt prompt) {
             return StubModelProvider.this.call(prompt.getInstructions(), prompt.getOptions());
