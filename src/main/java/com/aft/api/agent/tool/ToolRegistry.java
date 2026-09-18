@@ -26,13 +26,11 @@ public class ToolRegistry {
     }
 
     public List<ToolCallback> callbacksFor(UUID deviceId) {
-        if (deviceId == null) {
-            return List.of();
-        }
-        Set<String> enabled = deviceRegistry.enabledToolNames(deviceId);
-        return specs.values().stream()
-                .filter(spec -> enabled.contains(spec.name()))
-                .sorted(Comparator.comparing(ToolSpec::name))
+        return callbacksFor(deviceId, Set.of());
+    }
+
+    public List<ToolCallback> callbacksFor(UUID deviceId, Set<String> allowed) {
+        return catalogFor(deviceId, allowed).stream()
                 .map(spec -> (ToolCallback) new RemoteToolCallback(spec, executor))
                 .toList();
     }
@@ -42,12 +40,17 @@ public class ToolRegistry {
     }
 
     public List<ToolSpec> catalogFor(UUID deviceId) {
+        return catalogFor(deviceId, Set.of());
+    }
+
+    public List<ToolSpec> catalogFor(UUID deviceId, Set<String> allowed) {
         if (deviceId == null) {
             return List.of();
         }
         Set<String> enabled = deviceRegistry.enabledToolNames(deviceId);
         return specs.values().stream()
                 .filter(spec -> enabled.contains(spec.name()))
+                .filter(spec -> allowed.isEmpty() || allowed.contains(spec.name()))
                 .sorted(Comparator.comparing(ToolSpec::name))
                 .toList();
     }

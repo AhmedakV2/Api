@@ -18,6 +18,7 @@ import com.aft.api.agent.memory.ConversationWindow;
 import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.provider.ModelRouter;
 import com.aft.api.agent.provider.ModelTier;
+import com.aft.api.agent.routing.IntentRouter;
 import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
 import com.aft.api.agent.service.ModelUsageService;
@@ -76,11 +77,12 @@ class AgentBrainServiceTest {
         ReflectionTestUtils.setField(session, "id", SESSION_ID);
 
         brainService = new AgentBrainService(sessionManager, new ConversationWindow(properties),
-                new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(JsonMapper.builder().build()), toolRegistry, properties);
+                new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(JsonMapper.builder().build()), toolRegistry, new IntentRouter(),
+                properties);
 
         when(sessionManager.retune(eq(SESSION_ID), eq(USER_ID), any())).thenReturn(session);
         when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of());
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of());
         when(sessionManager.append(any(), any(), any(), anyInt()))
                 .thenAnswer(call -> stored(call.getArgument(1), call.getArgument(2), call.getArgument(3)));
         when(sessionManager.revise(any(), any(), anyInt()))
@@ -107,7 +109,7 @@ class AgentBrainServiceTest {
         when(modelRouter.provider()).thenReturn(
                 StubOllmProvider.failing(new IllegalStateException("baglanti yok")));
 
-        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "soru", null))
+        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null))
                 .isInstanceOf(ApiException.class);
         verify(sessionManager).discard(MESSAGE_ID);
     }
@@ -116,7 +118,7 @@ class AgentBrainServiceTest {
     void aracKataloguIstemeYazilir() {
         StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.catalogFor(any())).thenReturn(List.of(new ToolSpec() {
+        when(toolRegistry.catalogFor(any(), any())).thenReturn(List.of(new ToolSpec() {
             @Override
             public String name() {
                 return "local_scenario_run";
@@ -138,7 +140,7 @@ class AgentBrainServiceTest {
             }
         }));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru", null);
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         String system = provider.lastPrompt().getInstructions().getFirst().getText();
         assertThat(system).contains("local_scenario_run");
@@ -151,12 +153,12 @@ class AgentBrainServiceTest {
     void istemciYokkenAracListesiBosBildirilir() {
         StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.catalogFor(any())).thenReturn(List.of());
+        when(toolRegistry.catalogFor(any(), any())).thenReturn(List.of());
 
-        brainService.respond(SESSION_ID, USER_ID, "soru", null);
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         String system = provider.lastPrompt().getInstructions().getFirst().getText();
-        assertThat(system).contains("bagli bir istemci yok");
+        assertThat(system).contains("arac sunulmadi");
         assertThat(system).doesNotContain("{tools}");
     }
 
@@ -164,7 +166,7 @@ class AgentBrainServiceTest {
     void kullanimKaydiOrganizasyonBazindaYazilir() {
         when(modelRouter.provider()).thenReturn(new StubOllmProvider(List.of("yanit")));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru", null);
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         verify(usageService).recordCounts(ORG_ID, USER_ID, SESSION_ID, "buyuk", 11, 7);
     }
@@ -174,7 +176,7 @@ class AgentBrainServiceTest {
         StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
 
-        brainService.respond(SESSION_ID, USER_ID, "soru", null);
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         assertThat(provider.lastPrompt().getInstructions().getFirst().getMessageType())
                 .isEqualTo(MessageType.SYSTEM);
@@ -185,7 +187,7 @@ class AgentBrainServiceTest {
         when(modelRouter.provider()).thenReturn(
                 StubOllmProvider.failing(new IllegalStateException("baglanti yok")));
 
-        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "soru", null))
+        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("Model saglayici yanit vermedi");
         verify(sessionManager, never()).markFailed(SESSION_ID);
@@ -202,9 +204,9 @@ class AgentBrainServiceTest {
     void secenekTipiBagliModelinKendisindenGelir() {
         StubOllmProvider provider = new StubOllmProvider(List.of("yanit"), OpenAiChatOptions.builder().temperature(0.3).build());
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru", null);
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         ChatOptions options = provider.lastPrompt().getOptions();
         assertThat(options).isInstanceOf(OpenAiChatOptions.class);
@@ -217,9 +219,9 @@ class AgentBrainServiceTest {
     void bilinmeyenSaglayicidaGenelTipKullanilir() {
         StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru", null);
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         ChatOptions options = provider.lastPrompt().getOptions();
         assertThat(options).isInstanceOf(ToolCallingChatOptions.class);

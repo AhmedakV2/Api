@@ -15,9 +15,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class PromptLibrary {
     private static final String NO_TOOLS = """
-            - (Su anda bagli bir istemci yok, bu yuzden arac cagiramazsin.)
-            - Bu durumda sorulari metinsel olarak cevapla; islem gerektiren istekler icin
-              kullanicidan masaustu uygulamasini baglamasini iste.""";
+            - (Bu tur icin arac sunulmadi.)
+            - Soruyu dogrudan metinle cevapla, arac cagirmayi deneme. Kullanici bir islem
+              istiyorsa ne yapmak istedigini tek cumleyle sor.""";
 
     private final Map<SystemPrompts, String> templates = new EnumMap<>(SystemPrompts.class);
 

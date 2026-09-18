@@ -7,6 +7,8 @@ import com.aft.api.agent.entity.MessageRole;
 import com.aft.api.agent.memory.ConversationWindow;
 import com.aft.api.agent.prompt.PromptLibrary;
 import com.aft.api.agent.prompt.SystemPrompts;
+import com.aft.api.agent.routing.IntentRouter;
+import com.aft.api.agent.routing.ToolIntent;
 import com.aft.api.agent.provider.OllmProvider;
 import com.aft.api.agent.provider.ModelRouter;
 import com.aft.api.agent.tool.ToolCallContext;
@@ -41,6 +43,7 @@ public class AgentBrainService {
     private final ModelUsageService usageService;
     private final SseEmitterRegistry emitters;
     private final ToolRegistry toolRegistry;
+    private final IntentRouter intentRouter;
     private final AiProperties properties;
 
     public AgentBrainService(AgentSessionManager sessionManager,
@@ -50,6 +53,7 @@ public class AgentBrainService {
                              ModelUsageService usageService,
                              SseEmitterRegistry emitters,
                              ToolRegistry toolRegistry,
+                             IntentRouter intentRouter,
                              AiProperties properties) {
         this.sessionManager = sessionManager;
         this.conversationWindow = conversationWindow;
@@ -58,6 +62,7 @@ public class AgentBrainService {
         this.usageService = usageService;
         this.emitters = emitters;
         this.toolRegistry = toolRegistry;
+        this.intentRouter = intentRouter;
         this.properties = properties;
     }
 
@@ -65,14 +70,15 @@ public class AgentBrainService {
         AgentSession session = sessionManager.retune(sessionId, userId, model);
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
-        List<Message> prompt = buildPrompt(session);
+        ToolIntent intent = routeIntent(session, content);
+        List<Message> prompt = buildPrompt(session, intent);
         AgentMessage placeholder = sessionManager.append(sessionId, MessageRole.ASSISTANT, "", 0);
         ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
         toolContext.bindMessage(placeholder.getId());
 
         ChatResponse response;
         try {
-            response = callModel(session, prompt, toolContext);
+            response = callModel(session, prompt, toolContext, intent);
         } catch (RuntimeException e) {
             sessionManager.discard(placeholder.getId());
             throw e;
@@ -96,7 +102,8 @@ public class AgentBrainService {
         }
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
-        List<Message> prompt = buildPrompt(session);
+        ToolIntent intent = routeIntent(session, content);
+        List<Message> prompt = buildPrompt(session, intent);
         OllmProvider provider = modelRouter.provider();
         StringBuilder buffer = new StringBuilder();
         AtomicInteger tokenIn = new AtomicInteger();
@@ -106,7 +113,7 @@ public class AgentBrainService {
         ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
         toolContext.bindMessage(placeholder.getId());
 
-        Disposable subscription = provider.stream(prompt, options(session, toolContext))
+        Disposable subscription = provider.stream(prompt, options(session, toolContext, intent))
                 .doOnNext(chunk -> {
                     String piece = textOf(chunk);
                     if (!piece.isEmpty()) {
@@ -139,16 +146,26 @@ public class AgentBrainService {
         emitters.attach(sessionId, subscription);
     }
 
-    private List<Message> buildPrompt(AgentSession session) {
-        List<ToolSpec> tools = toolRegistry.catalogFor(session.getDeviceId());
+    private ToolIntent routeIntent(AgentSession session, String content) {
+        boolean hasHistory = !sessionManager.recentHistory(session.getId(), 2).isEmpty();
+        ToolIntent intent = intentRouter.route(content, hasHistory);
+        log.info("Niyet cozumlendi sessionId={} niyet={}", session.getId(), intent);
+        return intent;
+    }
+
+    private List<Message> buildPrompt(AgentSession session, ToolIntent intent) {
+        List<ToolSpec> tools = intentRouter.offersTools(intent)
+                ? toolRegistry.catalogFor(session.getDeviceId(), intentRouter.toolsFor(intent))
+                : List.of();
         String system = promptLibrary.system(SystemPrompts.PLANNER, session.getMode(), tools);
         return conversationWindow.build(system,
                 sessionManager.recentHistory(session.getId(), properties.maxWindowMessages()));
     }
 
-    private ChatResponse callModel(AgentSession session, List<Message> prompt, ToolCallContext toolContext) {
+    private ChatResponse callModel(AgentSession session, List<Message> prompt,
+                                   ToolCallContext toolContext, ToolIntent intent) {
         try {
-            return modelRouter.provider().call(prompt, options(session, toolContext));
+            return modelRouter.provider().call(prompt, options(session, toolContext, intent));
         } catch (RuntimeException e) {
             log.error("Model cagrisi basarisiz sessionId={}", session.getId(), e);
             throw new ApiException(ErrorCode.AI_PROVIDER_ERROR, "Model saglayici yanit vermedi");
@@ -203,14 +220,17 @@ public class AgentBrainService {
         return value == null ? 0 : value;
     }
 
-    private ToolCallingChatOptions options(AgentSession session, ToolCallContext toolContext) {
-        List<ToolCallback> callbacks = toolRegistry.callbacksFor(session.getDeviceId());
+    private ToolCallingChatOptions options(AgentSession session, ToolCallContext toolContext,
+                                           ToolIntent intent) {
+        List<ToolCallback> callbacks = intentRouter.offersTools(intent)
+                ? toolRegistry.callbacksFor(session.getDeviceId(), intentRouter.toolsFor(intent))
+                : List.of();
         if (callbacks.isEmpty()) {
-            log.warn("Modele arac sunulmuyor sessionId={} deviceId={}, yalnizca metinsel yanit uretilecek",
-                    session.getId(), session.getDeviceId());
+            log.info("Modele arac sunulmuyor sessionId={} niyet={}, dogrudan metinsel yanit uretilecek",
+                    session.getId(), intent);
         } else {
-            log.info("Modele {} arac sunuluyor sessionId={} deviceId={}",
-                    callbacks.size(), session.getId(), session.getDeviceId());
+            log.info("Modele {} arac sunuluyor sessionId={} niyet={}",
+                    callbacks.size(), session.getId(), intent);
         }
         return modelRouter.provider().toolOptions(session.getModel(), callbacks,
                 Map.of(ToolCallContext.KEY, toolContext));
