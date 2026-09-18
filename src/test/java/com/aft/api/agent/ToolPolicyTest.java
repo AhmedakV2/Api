@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class ToolPolicyTest {
 
-    private final ToolPolicy policy = new ToolPolicy(new AiProperties("ollama", null,
+    private final ToolPolicy policy = new ToolPolicy(new AiProperties(null, "FAST",
             Duration.ofSeconds(120), 40, 24000, Duration.ofSeconds(30), 12, 262144));
 
     @Test

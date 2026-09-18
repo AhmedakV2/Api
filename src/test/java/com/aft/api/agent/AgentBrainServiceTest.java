@@ -16,8 +16,9 @@ import com.aft.api.agent.entity.MessageRole;
 import com.aft.api.agent.entity.SessionMode;
 import com.aft.api.agent.memory.ConversationWindow;
 import com.aft.api.agent.prompt.PromptLibrary;
-import com.aft.api.agent.provider.ProviderName;
 import com.aft.api.agent.provider.ModelRouter;
+import com.aft.api.agent.provider.ModelTier;
+import com.aft.api.agent.routing.IntentRouter;
 import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
 import com.aft.api.agent.service.ModelUsageService;
@@ -42,11 +43,10 @@ import org.mockito.quality.Strictness;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
-import org.springframework.ai.anthropic.AnthropicChatOptions;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -68,20 +68,23 @@ class AgentBrainServiceTest {
     private AiProperties properties;
     private AgentBrainService brainService;
     private AgentSession session;
+    private SseEmitterRegistry emitters;
 
     @BeforeEach
     void setUp() {
-        properties = new AiProperties("ollama", new AiProperties.Models("buyuk", "kucuk", null),
-                Duration.ofSeconds(30), 40, 24000, Duration.ofSeconds(30), 12, 262144);
+        properties = new AiProperties(new AiProperties.Models("buyuk", "yavas", "ultra", null), "FAST",
+                Duration.ofSeconds(300), 40, 24000, Duration.ofSeconds(30), 12, 262144);
         session = new AgentSession(ORG_ID, USER_ID, null, "test", SessionMode.CHAT, "buyuk");
         ReflectionTestUtils.setField(session, "id", SESSION_ID);
 
+        emitters = new SseEmitterRegistry(JsonMapper.builder().build());
         brainService = new AgentBrainService(sessionManager, new ConversationWindow(properties),
-                new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(), toolRegistry, properties);
+                new PromptLibrary(), modelRouter, usageService, emitters, toolRegistry, new IntentRouter(),
+                Runnable::run, properties);
 
-        when(sessionManager.requireOpen(SESSION_ID, USER_ID)).thenReturn(session);
+        when(sessionManager.retune(eq(SESSION_ID), eq(USER_ID), any())).thenReturn(session);
         when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of());
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of());
         when(sessionManager.append(any(), any(), any(), anyInt()))
                 .thenAnswer(call -> stored(call.getArgument(1), call.getArgument(2), call.getArgument(3)));
         when(sessionManager.revise(any(), any(), anyInt()))
@@ -90,9 +93,9 @@ class AgentBrainServiceTest {
 
     @Test
     void yanitUretilirVeMesajlarKaydedilir() {
-        when(modelRouter.provider()).thenReturn(new StubModelProvider(List.of("merhaba ", "dunya")));
+        when(modelRouter.provider()).thenReturn(new StubOllmProvider(List.of("merhaba ", "dunya")));
 
-        AgentResponse response = brainService.respond(SESSION_ID, USER_ID, "selam");
+        AgentResponse response = brainService.respond(SESSION_ID, USER_ID, "selam", null);
 
         assertThat(response.content()).isEqualTo("merhaba dunya");
         assertThat(response.model()).isEqualTo("buyuk");
@@ -106,18 +109,18 @@ class AgentBrainServiceTest {
     @Test
     void saglayiciHatasindaBosYanitMesajiSilinir() {
         when(modelRouter.provider()).thenReturn(
-                StubModelProvider.failing(new IllegalStateException("baglanti yok")));
+                StubOllmProvider.failing(new IllegalStateException("baglanti yok")));
 
-        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "soru"))
+        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null))
                 .isInstanceOf(ApiException.class);
         verify(sessionManager).discard(MESSAGE_ID);
     }
 
     @Test
     void aracKataloguIstemeYazilir() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.catalogFor(any())).thenReturn(List.of(new ToolSpec() {
+        when(toolRegistry.catalogFor(any(), any())).thenReturn(List.of(new ToolSpec() {
             @Override
             public String name() {
                 return "local_scenario_run";
@@ -139,7 +142,7 @@ class AgentBrainServiceTest {
             }
         }));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru");
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         String system = provider.lastPrompt().getInstructions().getFirst().getText();
         assertThat(system).contains("local_scenario_run");
@@ -150,32 +153,32 @@ class AgentBrainServiceTest {
 
     @Test
     void istemciYokkenAracListesiBosBildirilir() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.catalogFor(any())).thenReturn(List.of());
+        when(toolRegistry.catalogFor(any(), any())).thenReturn(List.of());
 
-        brainService.respond(SESSION_ID, USER_ID, "soru");
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         String system = provider.lastPrompt().getInstructions().getFirst().getText();
-        assertThat(system).contains("bagli bir istemci yok");
+        assertThat(system).contains("arac sunulmadi");
         assertThat(system).doesNotContain("{tools}");
     }
 
     @Test
     void kullanimKaydiOrganizasyonBazindaYazilir() {
-        when(modelRouter.provider()).thenReturn(new StubModelProvider(List.of("yanit")));
+        when(modelRouter.provider()).thenReturn(new StubOllmProvider(List.of("yanit")));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru");
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         verify(usageService).recordCounts(ORG_ID, USER_ID, SESSION_ID, "buyuk", 11, 7);
     }
 
     @Test
     void istemSistemMesajiylaBaslar() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
 
-        brainService.respond(SESSION_ID, USER_ID, "soru");
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         assertThat(provider.lastPrompt().getInstructions().getFirst().getMessageType())
                 .isEqualTo(MessageType.SYSTEM);
@@ -184,9 +187,9 @@ class AgentBrainServiceTest {
     @Test
     void saglayiciHatasiAiProviderErrorAVirilir() {
         when(modelRouter.provider()).thenReturn(
-                StubModelProvider.failing(new IllegalStateException("baglanti yok")));
+                StubOllmProvider.failing(new IllegalStateException("baglanti yok")));
 
-        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "soru"))
+        assertThatThrownBy(() -> brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("Model saglayici yanit vermedi");
         verify(sessionManager, never()).markFailed(SESSION_ID);
@@ -194,18 +197,18 @@ class AgentBrainServiceTest {
 
     @Test
     void acikKanalYokkenAkisReddedilir() {
-        assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "soru"))
+        assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "soru", null))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("acik bir akis kanali yok");
     }
 
     @Test
     void secenekTipiBagliModelinKendisindenGelir() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"), ProviderName.OPENAI);
+        StubOllmProvider provider = new StubOllmProvider(List.of("yanit"), OpenAiChatOptions.builder().temperature(0.3).build());
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru");
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         ChatOptions options = provider.lastPrompt().getOptions();
         assertThat(options).isInstanceOf(OpenAiChatOptions.class);
@@ -215,43 +218,43 @@ class AgentBrainServiceTest {
     }
 
     @Test
-    void ollamaModelindeDeKendiSecenekTipiKorunur() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"), ProviderName.OLLAMA);
-        when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
-
-        brainService.respond(SESSION_ID, USER_ID, "soru");
-
-        ChatOptions options = provider.lastPrompt().getOptions();
-        assertThat(options).isInstanceOf(OllamaChatOptions.class);
-        assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
-    }
-
-    @Test
-    void anthropicModelindeDeKendiSecenekTipiKorunur() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"), ProviderName.ANTHROPIC);
-        when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
-
-        brainService.respond(SESSION_ID, USER_ID, "soru");
-
-        ChatOptions options = provider.lastPrompt().getOptions();
-        assertThat(options).isInstanceOf(AnthropicChatOptions.class);
-        assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
-    }
-
-    @Test
     void bilinmeyenSaglayicidaGenelTipKullanilir() {
-        StubModelProvider provider = new StubModelProvider(List.of("yanit"));
+        StubOllmProvider provider = new StubOllmProvider(List.of("yanit"));
         when(modelRouter.provider()).thenReturn(provider);
-        when(toolRegistry.callbacksFor(any())).thenReturn(List.of(callback()));
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
 
-        brainService.respond(SESSION_ID, USER_ID, "soru");
+        brainService.respond(SESSION_ID, USER_ID, "Senaryolari listele", null);
 
         ChatOptions options = provider.lastPrompt().getOptions();
         assertThat(options).isInstanceOf(ToolCallingChatOptions.class);
         assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
         assertThat(((ToolCallingChatOptions) options).getToolContext()).containsKey(ToolCallContext.KEY);
+    }
+
+    @Test
+    void aracliTurAkisYerineBloklamayaGuvenliYoldanKosar() {
+        StubOllmProvider provider = new StubOllmProvider(List.of("liste hazir"));
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
+        emitters.open(SESSION_ID, 30_000L);
+
+        brainService.streamInto(SESSION_ID, USER_ID, "Senaryolari listele", null);
+
+        assertThat(provider.calls()).isEqualTo(1);
+        assertThat(provider.streams()).isZero();
+        verify(sessionManager).revise(eq(MESSAGE_ID), eq("liste hazir"), anyInt());
+    }
+
+    @Test
+    void sohbetTuruGercekAkisiKullanir() {
+        StubOllmProvider provider = new StubOllmProvider(List.of("merhaba"));
+        when(modelRouter.provider()).thenReturn(provider);
+        emitters.open(SESSION_ID, 30_000L);
+
+        brainService.streamInto(SESSION_ID, USER_ID, "merhaba", null);
+
+        assertThat(provider.streams()).isEqualTo(1);
+        assertThat(provider.calls()).isZero();
     }
 
     private static ToolCallback callback() {

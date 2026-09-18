@@ -3,8 +3,6 @@ package com.aft.api.agent.web;
 import com.aft.api.agent.dto.ModelInfoDto;
 import com.aft.api.agent.dto.UsageSummaryDto;
 import com.aft.api.agent.provider.ModelRouter;
-import com.aft.api.agent.provider.ProviderName;
-import com.aft.api.agent.provider.TaskKind;
 import com.aft.api.agent.service.ModelUsageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,11 +34,11 @@ public class AgentModelController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Kullanilabilir modeller")
     public ModelInfoDto models() {
-        return new ModelInfoDto(modelRouter.provider().name().name(),
-                modelRouter.activeProviders().stream().map(ProviderName::name).toList(),
-                modelRouter.availableModels(),
-                modelRouter.modelFor(TaskKind.PLANNING),
-                modelRouter.modelFor(TaskKind.FAST));
+        return new ModelInfoDto("OLLM",
+                modelRouter.isReady(),
+                modelRouter.tiers(),
+                modelRouter.defaultTier().name(),
+                modelRouter.modelFor(modelRouter.defaultTier()));
     }
 
     @GetMapping("/usage")

@@ -15,7 +15,7 @@ import com.aft.api.agent.entity.AgentSession;
 import com.aft.api.agent.entity.MessageRole;
 import com.aft.api.agent.entity.SessionMode;
 import com.aft.api.agent.provider.ModelRouter;
-import com.aft.api.agent.provider.TaskKind;
+import com.aft.api.agent.provider.ModelTier;
 import com.aft.api.agent.repository.AgentMessageRepository;
 import com.aft.api.agent.repository.AgentSessionRepository;
 import com.aft.api.agent.service.AgentSessionManager;
@@ -73,7 +73,7 @@ class AgentSessionManagerTest {
             ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
             return saved;
         });
-        when(modelRouter.modelFor(TaskKind.PLANNING)).thenReturn("varsayilan-model");
+        when(modelRouter.modelFor(any())).thenReturn("varsayilan-model");
     }
 
     @Test
