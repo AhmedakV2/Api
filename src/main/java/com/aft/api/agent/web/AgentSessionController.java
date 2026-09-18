@@ -9,7 +9,7 @@ import com.aft.api.agent.entity.SessionStatus;
 import com.aft.api.agent.service.AgentBrainService;
 import com.aft.api.agent.service.AgentSessionManager;
 import com.aft.api.common.dto.PageResponse;
-import com.aft.api.realtime.SseEmitterRegistry;
+import com.aft.api.realtime.ChatChannel;
 import com.aft.api.security.AftPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,14 +38,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgentSessionController {
     private final AgentSessionManager sessionManager;
     private final AgentBrainService brainService;
-    private final SseEmitterRegistry emitters;
+    private final ChatChannel chat;
 
     public AgentSessionController(AgentSessionManager sessionManager,
                                   AgentBrainService brainService,
-                                  SseEmitterRegistry emitters) {
+                                  ChatChannel chat) {
         this.sessionManager = sessionManager;
         this.brainService = brainService;
-        this.emitters = emitters;
+        this.chat = chat;
     }
 
     @PostMapping
@@ -89,11 +89,9 @@ public class AgentSessionController {
                                                  @RequestParam(defaultValue = "false") boolean stream,
                                                  @Valid @RequestBody AgentRequest request,
                                                  @AuthenticationPrincipal AftPrincipal principal) {
-        if (stream) {
-            if (!emitters.isOpen(id)) {
-                return ResponseEntity.ok(brainService.respond(id, principal.userId(), request.content(), request.model()));
-            }
-            brainService.streamInto(id, principal.userId(), request.content(), request.model());
+        if (stream && request.turnId() != null && !request.turnId().isBlank()) {
+            brainService.streamInto(id, principal.userId(), request.content(), request.model(),
+                    request.turnId());
             return ResponseEntity.accepted().build();
         }
         return ResponseEntity.ok(brainService.respond(id, principal.userId(), request.content(), request.model()));
@@ -105,6 +103,6 @@ public class AgentSessionController {
     public Map<String, Boolean> cancel(@PathVariable UUID id,
                                        @AuthenticationPrincipal AftPrincipal principal) {
         sessionManager.requireOwned(id, principal.userId());
-        return Map.of("cancelled", emitters.cancel(id));
+        return Map.of("cancelled", chat.cancel(id));
     }
 }
