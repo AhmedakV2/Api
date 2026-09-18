@@ -6,7 +6,10 @@ import com.aft.api.realtime.SseEmitterRegistry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,8 +38,14 @@ public class StreamController {
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Yanit akisi")
-    public SseEmitter stream(@PathVariable UUID id, @AuthenticationPrincipal AftPrincipal principal) {
+    public ResponseEntity<SseEmitter> stream(@PathVariable UUID id,
+                                             @AuthenticationPrincipal AftPrincipal principal) {
         sessionManager.requireOpen(id, principal.userId());
-        return emitters.open(id, brainService.streamTimeoutMillis());
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header("X-Accel-Buffering", "no")
+                .body(emitters.open(id, brainService.streamTimeoutMillis()));
     }
 }
