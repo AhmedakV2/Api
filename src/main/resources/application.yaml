@@ -45,12 +45,12 @@ spring:
       audio:
         speech: none
     openai:
-      base-url: ${OLLM_BASE_URL:}
-      api-key: ${OLLM_API_KEY:}
+      base-url: ${OLLM_BASE_URL:${FOALLM_BASE_URL:}}
+      api-key: ${OLLM_API_KEY:${FOALLM_API_KEY:}}
       chat:
         options:
-          model: ${OLLM_MODEL_FAST:Akgun-Q3.6}
-          temperature: ${OLLM_TEMPERATURE:0.3}
+          model: ${OLLM_MODEL_FAST:${FOALLM_MODEL:Akgun-Q3.6}}
+          temperature: ${OLLM_TEMPERATURE:${FOALLM_TEMPERATURE:0.3}}
 
 server:
   port: ${AFT_SERVER_PORT:8092}
@@ -81,9 +81,9 @@ aft:
   ai:
     default-tier: ${OLLM_DEFAULT_TIER:FAST}
     models:
-      fast: ${OLLM_MODEL_FAST:Akgun-Q3.6}
-      slow: ${OLLM_MODEL_SLOW:Akgun-Q3.6}
-      ultra: ${OLLM_MODEL_ULTRA:Akgun-Q3.6}
+      fast: ${OLLM_MODEL_FAST:${FOALLM_MODEL:Akgun-Q3.6}}
+      slow: ${OLLM_MODEL_SLOW:${FOALLM_MODEL:Akgun-Q3.6}}
+      ultra: ${OLLM_MODEL_ULTRA:${FOALLM_MODEL:Akgun-Q3.6}}
       embedding: ${OLLM_EMBEDDING_MODEL:}
     request-timeout: ${AFT_AI_REQUEST_TIMEOUT:PT300S}
     max-window-messages: ${AFT_AI_MAX_WINDOW_MESSAGES:40}

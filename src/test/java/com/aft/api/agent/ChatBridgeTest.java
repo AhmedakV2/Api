@@ -132,6 +132,38 @@ class ChatBridgeTest {
     }
 
     @Test
+    void modelYapilandirilmamissaSessizKalmaz() {
+        when(modelRouter.provider()).thenThrow(new com.aft.api.common.exception.ApiException(
+                com.aft.api.common.exception.ErrorCode.AI_PROVIDER_ERROR,
+                "Ollm sohbet modeli yapilandirilmadi, OLLM_BASE_URL ve OLLM_API_KEY degerlerini kontrol edin"));
+
+        brainService.streamInto(SESSION_ID, USER_ID, "merhaba", null, "t-5");
+
+        assertThat(sent).extracting(ChatFrame::kind).containsExactly("error");
+        assertThat(sent.getFirst().text()).contains("OLLM_BASE_URL");
+    }
+
+    @Test
+    void istekDogrulanamazsaIstekUzerindenHataDoner() {
+        when(sessionManager.recentHistory(any(), anyInt()))
+                .thenThrow(new IllegalStateException("veritabani yok"));
+
+        org.assertj.core.api.Assertions
+                .assertThatThrownBy(() -> brainService.streamInto(SESSION_ID, USER_ID, "merhaba", null, "t-6"))
+                .hasMessageContaining("veritabani yok");
+        assertThat(sent).isEmpty();
+    }
+
+    @Test
+    void aracliTurdaDaSessizKalmaz() {
+        when(modelRouter.provider()).thenThrow(new IllegalStateException("saglayici yok"));
+
+        brainService.streamInto(SESSION_ID, USER_ID, "Senaryolari listele", null, "t-7");
+
+        assertThat(sent).extracting(ChatFrame::kind).containsExactly("error");
+    }
+
+    @Test
     void istemciBagliDegilseIstekReddedilir() {
         when(sessions.isOnline(DEVICE_ID)).thenReturn(false);
 
