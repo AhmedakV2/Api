@@ -18,6 +18,7 @@ public class StubModelProvider implements ModelProvider {
     private final List<String> chunks;
     private final RuntimeException failure;
     private final ProviderName providerName;
+    private ChatOptions defaultOptions = ChatOptions.builder().build();
     private Prompt lastPrompt;
 
     public StubModelProvider(List<String> chunks) {
@@ -98,7 +99,7 @@ public class StubModelProvider implements ModelProvider {
 
     private final class StubChatModel implements ChatModel {
         @Override
-        public ChatOptions getDefaultOptions() {
+        public ChatOptions getOptions() {
             return defaultOptions;
         }
 
