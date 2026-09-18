@@ -14,7 +14,8 @@ public class LocalScenarioRunSpec implements ToolSpec {
 
     @Override
     public String description() {
-        return "Bir senaryoyu tarayicida bastan sona kosar ve adim adim sonucunu doner. "
+        return "Bir senaryoyu tarayicida bastan sona kosar ve adim adim ozetini doner. Tam ayrinti icin "
+                + "sonrasinda local_run_detail, basarisiz adim icin local_failure_context cagir. "
                 + "Kullanici onayi gerektirir.";
     }
 

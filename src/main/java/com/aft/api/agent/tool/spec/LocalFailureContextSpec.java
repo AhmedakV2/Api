@@ -14,7 +14,9 @@ public class LocalFailureContextSpec implements ToolSpec {
 
     @Override
     public String description() {
-        return "Bir basarisizlik baglam paketini okur ve ozetini doner.";
+        return "Bir basarisizlik baglam paketini okur: adres, hata mesaji, eslesme durumu, en iyi adaylar ve "
+                + "o anki elementlerin ilk 40 tanesi. Ekran goruntusu boyut nedeniyle donmez, "
+                + "yalnizca bayt sayisi bildirilir. contextId degerini local_run_detail ciktisindan al.";
     }
 
     @Override

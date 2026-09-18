@@ -108,6 +108,31 @@ class ToolSchemaTest {
     }
 
     @Test
+    void senaryoTaslagiAdimSeklindeHedefAlanlariniTarifEder() {
+        JsonNode step = schema(new ScenarioDraftWriteSpec())
+                .path("properties").path("steps").path("items");
+        JsonNode target = step.path("properties").path("target").path("properties");
+
+        assertThat(step.path("properties").path("kind").path("enum")).isNotEmpty();
+        assertThat(target.has("testId")).isTrue();
+        assertThat(target.has("elementId")).isTrue();
+        assertThat(target.has("fieldName")).isTrue();
+        assertThat(target.has("name")).isTrue();
+        assertThat(target.has("text")).isTrue();
+        assertThat(target.has("ordinal")).isTrue();
+    }
+
+    @Test
+    void sayfaTaramasiDaraltmaParametreleriniSunar() {
+        JsonNode properties = schema(new PageSnapshotSpec()).path("properties");
+
+        assertThat(properties.has("limit")).isTrue();
+        assertThat(properties.has("filter")).isTrue();
+        assertThat(properties.has("allElements")).isTrue();
+        assertThat(new PageSnapshotSpec().description()).contains("element.target");
+    }
+
+    @Test
     void senaryoTaslagiZorunluAlanlariIster() {
         JsonNode required = schema(new ScenarioDraftWriteSpec()).path("required");
         List<String> names = required.valueStream().map(JsonNode::asString).toList();
