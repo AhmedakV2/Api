@@ -57,14 +57,15 @@ public class RemoteToolExecutor {
 
         UUID callId = UUID.randomUUID();
         long started = System.nanoTime();
+        long timeoutMs = policy.timeoutMs(spec);
         AgentToolCall record = persist(context, spec, argumentsJson);
 
         try {
             CompletableFuture<ToolResult> future = pendingRegistry.register(callId);
             toolChannel.send(context.deviceId(), new ToolInvocation(callId, context.sessionId(),
-                    spec.name(), argumentsJson, policy.requiresApproval(spec), policy.timeoutMs()));
+                    spec.name(), argumentsJson, policy.requiresApproval(spec), timeoutMs));
 
-            ToolResult result = future.get(policy.timeoutMs(), TimeUnit.MILLISECONDS);
+            ToolResult result = future.get(timeoutMs, TimeUnit.MILLISECONDS);
             return finish(record, result, started);
         } catch (TimeoutException e) {
             pendingRegistry.cancel(callId);

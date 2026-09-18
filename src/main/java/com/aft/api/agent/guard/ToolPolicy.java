@@ -24,6 +24,11 @@ public class ToolPolicy {
         return properties.toolTimeout().toMillis();
     }
 
+    public long timeoutMs(ToolSpec spec) {
+        long override = spec.timeoutMs();
+        return override > 0 ? override : timeoutMs();
+    }
+
     public int maxResultBytes() {
         return properties.maxToolResultBytes();
     }

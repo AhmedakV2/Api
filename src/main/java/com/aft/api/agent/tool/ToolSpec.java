@@ -10,4 +10,8 @@ public interface ToolSpec {
     default boolean writeEffect() {
         return false;
     }
+
+    default long timeoutMs() {
+        return 0L;
+    }
 }

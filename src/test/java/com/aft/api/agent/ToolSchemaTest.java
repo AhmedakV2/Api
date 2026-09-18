@@ -7,11 +7,21 @@ import com.aft.api.agent.tool.ToolSpec;
 import com.aft.api.agent.tool.spec.BrowserCommandSpec;
 import com.aft.api.agent.tool.spec.LocalDescriptorSearchSpec;
 import com.aft.api.agent.tool.spec.LocalFailureContextSpec;
+import com.aft.api.agent.tool.spec.LocalHealthReportSpec;
+import com.aft.api.agent.tool.spec.LocalRunCancelSpec;
+import com.aft.api.agent.tool.spec.LocalRunDetailSpec;
 import com.aft.api.agent.tool.spec.LocalRunHistorySpec;
+import com.aft.api.agent.tool.spec.LocalScenarioDeleteSpec;
+import com.aft.api.agent.tool.spec.LocalScenarioListSpec;
 import com.aft.api.agent.tool.spec.LocalScenarioReadSpec;
+import com.aft.api.agent.tool.spec.LocalScenarioRunSpec;
 import com.aft.api.agent.tool.spec.LocalScenarioSearchSpec;
+import com.aft.api.agent.tool.spec.LocalScenarioValidateSpec;
 import com.aft.api.agent.tool.spec.PageSnapshotSpec;
+import com.aft.api.agent.tool.spec.PageStateSpec;
 import com.aft.api.agent.tool.spec.ScenarioDraftWriteSpec;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -22,9 +32,12 @@ class ToolSchemaTest {
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
     private final List<ToolSpec> specs = List.of(
-            new LocalScenarioSearchSpec(), new LocalScenarioReadSpec(), new LocalRunHistorySpec(),
-            new LocalDescriptorSearchSpec(), new LocalFailureContextSpec(), new PageSnapshotSpec(),
-            new BrowserCommandSpec(), new ScenarioDraftWriteSpec());
+            new LocalScenarioListSpec(), new LocalScenarioSearchSpec(), new LocalScenarioReadSpec(),
+            new LocalScenarioValidateSpec(), new LocalScenarioRunSpec(), new LocalScenarioDeleteSpec(),
+            new LocalRunHistorySpec(), new LocalRunDetailSpec(), new LocalRunCancelSpec(),
+            new LocalHealthReportSpec(), new LocalDescriptorSearchSpec(), new LocalFailureContextSpec(),
+            new PageStateSpec(), new PageSnapshotSpec(), new BrowserCommandSpec(),
+            new ScenarioDraftWriteSpec());
 
     private JsonNode schema(ToolSpec spec) {
         return MAPPER.readTree(spec.inputSchema());
@@ -44,9 +57,24 @@ class ToolSchemaTest {
     }
 
     @Test
-    void sekizAracTanimlidir() {
-        assertThat(specs).hasSize(8);
+    void herAracAdiTamOlarakBirKezTanimlidir() {
         assertThat(specs).extracting(ToolSpec::name).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void toolNamesSabitleriIleSpecListesiOrtusur() {
+        List<String> declared = Arrays.stream(ToolNames.class.getDeclaredFields())
+                .filter(field -> Modifier.isStatic(field.getModifiers()) && field.getType() == String.class)
+                .map(field -> {
+                    try {
+                        return (String) field.get(null);
+                    } catch (IllegalAccessException e) {
+                        throw new IllegalStateException(e);
+                    }
+                })
+                .toList();
+
+        assertThat(specs).extracting(ToolSpec::name).containsExactlyInAnyOrderElementsOf(declared);
     }
 
     @Test
@@ -88,8 +116,17 @@ class ToolSchemaTest {
     }
 
     @Test
-    void yalnizcaIkiAracOnayIster() {
+    void yalnizcaYazmaEtkisiOlanAraclarOnayIster() {
         assertThat(specs).filteredOn(ToolSpec::writeEffect).extracting(ToolSpec::name)
-                .containsExactlyInAnyOrder(ToolNames.BROWSER_COMMAND, ToolNames.SCENARIO_DRAFT_WRITE);
+                .containsExactlyInAnyOrder(ToolNames.BROWSER_COMMAND, ToolNames.SCENARIO_DRAFT_WRITE,
+                        ToolNames.LOCAL_SCENARIO_RUN, ToolNames.LOCAL_SCENARIO_DELETE,
+                        ToolNames.LOCAL_RUN_CANCEL);
+    }
+
+    @Test
+    void uzunSurenAraclarKendiZamanAsiminiTasir() {
+        assertThat(new LocalScenarioRunSpec().timeoutMs()).isGreaterThan(60_000L);
+        assertThat(new PageSnapshotSpec().timeoutMs()).isGreaterThan(60_000L);
+        assertThat(new LocalScenarioReadSpec().timeoutMs()).isZero();
     }
 }

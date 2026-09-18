@@ -38,4 +38,9 @@ public class PageSnapshotSpec implements ToolSpec {
                 }
                 """;
     }
+
+    @Override
+    public long timeoutMs() {
+        return 120_000L;
+    }
 }
