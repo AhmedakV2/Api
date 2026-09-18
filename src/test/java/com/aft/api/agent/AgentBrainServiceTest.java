@@ -68,6 +68,7 @@ class AgentBrainServiceTest {
     private AiProperties properties;
     private AgentBrainService brainService;
     private AgentSession session;
+    private SseEmitterRegistry emitters;
 
     @BeforeEach
     void setUp() {
@@ -76,9 +77,10 @@ class AgentBrainServiceTest {
         session = new AgentSession(ORG_ID, USER_ID, null, "test", SessionMode.CHAT, "buyuk");
         ReflectionTestUtils.setField(session, "id", SESSION_ID);
 
+        emitters = new SseEmitterRegistry(JsonMapper.builder().build());
         brainService = new AgentBrainService(sessionManager, new ConversationWindow(properties),
-                new PromptLibrary(), modelRouter, usageService, new SseEmitterRegistry(JsonMapper.builder().build()), toolRegistry, new IntentRouter(),
-                properties);
+                new PromptLibrary(), modelRouter, usageService, emitters, toolRegistry, new IntentRouter(),
+                Runnable::run, properties);
 
         when(sessionManager.retune(eq(SESSION_ID), eq(USER_ID), any())).thenReturn(session);
         when(sessionManager.recentHistory(any(), anyInt())).thenReturn(List.of());
@@ -227,6 +229,32 @@ class AgentBrainServiceTest {
         assertThat(options).isInstanceOf(ToolCallingChatOptions.class);
         assertThat(((ToolCallingChatOptions) options).getToolCallbacks()).hasSize(1);
         assertThat(((ToolCallingChatOptions) options).getToolContext()).containsKey(ToolCallContext.KEY);
+    }
+
+    @Test
+    void aracliTurAkisYerineBloklamayaGuvenliYoldanKosar() {
+        StubOllmProvider provider = new StubOllmProvider(List.of("liste hazir"));
+        when(modelRouter.provider()).thenReturn(provider);
+        when(toolRegistry.callbacksFor(any(), any())).thenReturn(List.of(callback()));
+        emitters.open(SESSION_ID, 30_000L);
+
+        brainService.streamInto(SESSION_ID, USER_ID, "Senaryolari listele", null);
+
+        assertThat(provider.calls()).isEqualTo(1);
+        assertThat(provider.streams()).isZero();
+        verify(sessionManager).revise(eq(MESSAGE_ID), eq("liste hazir"), anyInt());
+    }
+
+    @Test
+    void sohbetTuruGercekAkisiKullanir() {
+        StubOllmProvider provider = new StubOllmProvider(List.of("merhaba"));
+        when(modelRouter.provider()).thenReturn(provider);
+        emitters.open(SESSION_ID, 30_000L);
+
+        brainService.streamInto(SESSION_ID, USER_ID, "merhaba", null);
+
+        assertThat(provider.streams()).isEqualTo(1);
+        assertThat(provider.calls()).isZero();
     }
 
     private static ToolCallback callback() {

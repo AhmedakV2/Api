@@ -20,7 +20,9 @@ import com.aft.api.config.AiProperties;
 import com.aft.api.realtime.SseEmitterRegistry;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.Message;
@@ -44,6 +46,7 @@ public class AgentBrainService {
     private final SseEmitterRegistry emitters;
     private final ToolRegistry toolRegistry;
     private final IntentRouter intentRouter;
+    private final Executor toolExecutor;
     private final AiProperties properties;
 
     public AgentBrainService(AgentSessionManager sessionManager,
@@ -54,6 +57,7 @@ public class AgentBrainService {
                              SseEmitterRegistry emitters,
                              ToolRegistry toolRegistry,
                              IntentRouter intentRouter,
+                             @Qualifier("agentToolExecutor") Executor toolExecutor,
                              AiProperties properties) {
         this.sessionManager = sessionManager;
         this.conversationWindow = conversationWindow;
@@ -63,6 +67,7 @@ public class AgentBrainService {
         this.emitters = emitters;
         this.toolRegistry = toolRegistry;
         this.intentRouter = intentRouter;
+        this.toolExecutor = toolExecutor;
         this.properties = properties;
     }
 
@@ -103,6 +108,11 @@ public class AgentBrainService {
         sessionManager.append(sessionId, MessageRole.USER, content, ConversationWindow.estimate(content));
 
         ToolIntent intent = routeIntent(session, content);
+        if (intentRouter.offersTools(intent)) {
+            toolExecutor.execute(() -> blockingInto(sessionId, userId, session, content, intent));
+            return;
+        }
+
         List<Message> prompt = buildPrompt(session, intent);
         OllmProvider provider = modelRouter.provider();
         StringBuilder buffer = new StringBuilder();
@@ -144,6 +154,33 @@ public class AgentBrainService {
                 .subscribe();
 
         emitters.attach(sessionId, subscription);
+    }
+
+    private void blockingInto(UUID sessionId, UUID userId, AgentSession session,
+                              String content, ToolIntent intent) {
+        List<Message> prompt = buildPrompt(session, intent);
+        AgentMessage placeholder = sessionManager.append(sessionId, MessageRole.ASSISTANT, "", 0);
+        ToolCallContext toolContext = new ToolCallContext(sessionId, userId, session.getDeviceId());
+        toolContext.bindMessage(placeholder.getId());
+
+        try {
+            ChatResponse response = modelRouter.provider()
+                    .call(prompt, options(session, toolContext, intent));
+            String text = textOf(response);
+            AgentMessage saved = sessionManager.revise(placeholder.getId(), text,
+                    ConversationWindow.estimate(text));
+            usageService.recordCounts(session.getOrgId(), userId, sessionId, session.getModel(),
+                    tokenIn(response), tokenOut(response));
+            if (!text.isEmpty()) {
+                emitters.sendText(sessionId, "delta", text);
+            }
+            emitters.send(sessionId, "done", saved.getId().toString());
+            emitters.complete(sessionId);
+        } catch (RuntimeException e) {
+            log.error("Aracli tur basarisiz sessionId={}", sessionId, e);
+            sessionManager.discard(placeholder.getId());
+            emitters.fail(sessionId, "Model saglayici yanit vermedi: " + rootMessage(e));
+        }
     }
 
     private ToolIntent routeIntent(AgentSession session, String content) {

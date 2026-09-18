@@ -17,6 +17,8 @@ public class StubOllmProvider extends OllmProvider {
     private final List<String> chunks;
     private final RuntimeException failure;
     private Prompt lastPrompt;
+    private int calls;
+    private int streams;
 
     public StubOllmProvider(List<String> chunks) {
         this(chunks, null, null);
@@ -40,8 +42,17 @@ public class StubOllmProvider extends OllmProvider {
         return lastPrompt;
     }
 
+    public int calls() {
+        return calls;
+    }
+
+    public int streams() {
+        return streams;
+    }
+
     @Override
     public ChatResponse call(List<Message> messages, ChatOptions options) {
+        calls++;
         lastPrompt = new Prompt(messages, options);
         if (failure != null) {
             throw failure;
@@ -51,6 +62,7 @@ public class StubOllmProvider extends OllmProvider {
 
     @Override
     public Flux<ChatResponse> stream(List<Message> messages, ChatOptions options) {
+        streams++;
         lastPrompt = new Prompt(messages, options);
         if (failure != null) {
             return Flux.error(failure);
